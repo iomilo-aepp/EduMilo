@@ -1,0 +1,23 @@
+{
+  "name": "EduMilo – Διαχείριση Μαθημάτων",
+  "short_name": "EduMilo",
+  "start_url": "/EduMilo/",
+  "scope": "/EduMilo/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#172b58",
+  "icons": [
+    {
+      "src": "edumilo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "edumilo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
