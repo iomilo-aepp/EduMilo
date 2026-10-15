@@ -2,6 +2,8 @@
 <html lang="el"><head><meta charset="utf-8"><meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"><meta name="viewport" content="width=device-width, initial-scale=1"><title>EduMilo | Διαχείριση Μαθημάτων</title><link rel="icon" type="image/png" href="./edumilo-192.png"><link rel="apple-touch-icon" href="./edumilo-192.png"><link rel="manifest" href="./manifest.webmanifest"><meta name="theme-color" content="#172b58"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="EduMilo"><style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17233b;background:#f4f7fb}*{box-sizing:border-box}body{margin:0}header{background:#172b58;color:white;padding:18px 5%;display:flex;justify-content:space-between;align-items:center}header strong{font-size:24px;display:flex;align-items:center;gap:12px}header strong img{width:42px;height:42px;border-radius:11px;object-fit:cover}main{max-width:1050px;margin:30px auto;padding:0 18px}.card{background:white;border-radius:15px;padding:24px;margin-bottom:20px;box-shadow:0 4px 20px #15213a10}h1{font-size:26px}h2{font-size:19px}input,select,button{font:inherit;padding:11px;border-radius:8px;border:1px solid #ccd4e0}input{width:100%}button{background:#2555bd;color:white;border:0;cursor:pointer}button:hover{background:#173f97}button.secondary{background:#e8edf7;color:#203657}button.danger{background:#b42d40}form{display:grid;gap:12px}.two{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}.two button{align-self:end}.hidden{display:none!important}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}nav button.active{background:#172b58}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.stat{padding:18px;background:#eef3ff;border-radius:12px}.stat b{display:block;font-size:28px;margin-top:7px}table{width:100%;border-collapse:collapse}td,th{padding:12px;text-align:left;border-bottom:1px solid #e7ebf2}small,.muted{color:#65738a}.error{color:#b42337}.success{color:#157347}.scroll{overflow:auto}#status{min-height:22px}.group-card{border:1px solid #e1e6f0;border-radius:12px;padding:16px;margin:12px 0}.group-card h3{margin:0}.group-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.group-actions select{flex:1;min-width:180px}.smallbtn{font-size:13px;margin:4px 6px 4px 0;padding:8px}button:disabled{opacity:.5;cursor:not-allowed}#config{border-left:4px solid #e3aa31}@media(max-width:600px){header{padding:14px}header strong{font-size:20px}.card{padding:16px}td,th{padding:8px}}
 #pin input{max-width:240px;text-align:center;font-size:28px;letter-spacing:8px}#pin .pin-actions{display:flex;gap:8px;flex-wrap:wrap}#pin button{max-width:300px}
+
+.week-calendar{display:grid;grid-template-columns:repeat(7,minmax(125px,1fr));gap:8px;overflow-x:auto;margin:14px 0 20px}.week-day{min-height:140px;border:1px solid #dbe2ed;border-radius:10px;background:#f8faff;padding:8px}.week-day h3{font-size:13px;margin:0 0 10px}.week-event{display:block;width:100%;border:0;border-left:5px solid var(--event-color,#2555bd);background:#fff;color:#17233b;text-align:left;padding:8px;margin:5px 0;border-radius:6px;box-shadow:0 1px 4px #0001;cursor:pointer;font-size:12px;white-space:normal}.week-event strong{display:block}.week-event small{display:block;margin-top:3px}.week-event.cancelled{opacity:.6;text-decoration:line-through}.week-event.completed{background:#edf8f0}.week-event.makeup{outline:1px dashed #b78420}@media(max-width:850px){.week-calendar{grid-template-columns:repeat(7,minmax(150px,1fr));overflow-x:auto}}@media print{body *{visibility:hidden!important}#weekCalendar,#weekCalendar * ,#weekLabel{visibility:visible!important}#weekCalendar{position:absolute;left:0;top:55px;width:100%;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;overflow:visible}#weekLabel{position:absolute;left:0;top:12px}.week-day{padding:4px;min-height:150px;break-inside:avoid}.week-event{font-size:9px;padding:4px;box-shadow:none} @page{size:landscape;margin:10mm}}
 </style></head><body><header><strong><img src="./edumilo-192.png" alt=""> EduMilo</strong><button id="logout" class="secondary hidden">Αποσύνδεση</button></header><main><div id="status" role="status"></div>
 <section id="config" class="card"><h1>Αρχική σύνδεση Supabase</h1><p class="muted">Συμπλήρωσε το Project URL και το δημόσιο Publishable Key από το δικό σου Supabase project EduMilo. Μη βάλεις secret ή service_role key.</p><form id="configForm"><label>Project URL<input id="url" type="url" placeholder="https://xxxxx.supabase.co" required></label><label>Publishable key<input id="key" placeholder="sb_publishable_..." required></label><button>Αποθήκευση και σύνδεση</button></form></section>
 <section id="auth" class="card hidden"><h1>Σύνδεση</h1><p class="muted">Χρησιμοποίησε τον λογαριασμό που δημιούργησες στο Supabase Authentication.</p><form id="loginForm"><label>Email<input id="email" type="email" required autocomplete="username"></label><label>Κωδικός<input id="password" type="password" required autocomplete="current-password"></label><button>Είσοδος</button></form><p><button id="changeConfig" class="secondary">Αλλαγή Supabase project</button></p></section>
@@ -16,7 +18,7 @@
 <h2>Αυτόματο εβδομαδιαίο πρόγραμμα</h2>
 <p class="muted">Τα μαθήματα της επιλεγμένης εβδομάδας δημιουργούνται από τις ημέρες και ώρες των τμημάτων. Δεν δημιουργούνται ξανά εφόσον υπάρχουν.</p>
 <div class="group-actions"><button type="button" id="prevWeek" class="secondary">← Προηγούμενη</button><button type="button" id="thisWeek" class="secondary">Τρέχουσα εβδομάδα</button><button type="button" id="nextWeek" class="secondary">Επόμενη →</button></div>
-<p><b id="weekLabel"></b></p>
+<p><b id="weekLabel"></b></p><div class="group-actions"><button type="button" id="printWeek" class="secondary">🖨 Εκτύπωση εβδομάδας</button></div><div id="weekCalendar" class="week-calendar"></div>
 <div class="scroll"><table><thead><tr><th>Ημέρα</th><th>Ώρα</th><th>Τμήμα</th><th>Κατάσταση</th></tr></thead><tbody id="weeklyRows"></tbody></table></div>
 <h2>Καταχώριση μαθήματος</h2><form id="lessonForm" class="two"><label>Τμήμα<select name="group_id" id="lessonGroup" required></select></label><label>Ημερομηνία<input type="date" name="lesson_date" required></label><label>Ώρα έναρξης<input type="time" name="start_time"></label><label>Ώρα λήξης<input type="time" name="end_time"></label><label>Σημειώσεις<input name="notes" maxlength="500" placeholder="Τι διδάχθηκε"></label><button>Αποθήκευση μαθήματος</button></form><h2>Ιστορικό μαθημάτων</h2><div class="group-actions" style="align-items:center"><label for="lessonPageSize">Εμφάνιση</label><select id="lessonPageSize"><option value="20">20 μαθήματα</option><option value="50">50 μαθήματα</option><option value="100">100 μαθήματα</option></select><span id="lessonPageInfo" class="muted"></span><button type="button" id="lessonPrevPage" class="secondary smallbtn">← Προηγούμενη</button><button type="button" id="lessonNextPage" class="secondary smallbtn">Επόμενη →</button></div><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ώρες</th><th>Σημειώσεις</th><th>Κατάσταση</th><th>Παρουσίες</th><th></th></tr></thead><tbody id="lessonRows"></tbody></table></div></div>
 <div id="attendance" class="tab card hidden"><h2>Παρουσιολόγιο</h2>
@@ -382,6 +384,35 @@ async function openWeeklySchedule(){
    td(tr,[l.start_time?.slice(0,5),l.end_time?.slice(0,5)].filter(Boolean).join('–'));
    td(tr,g?.name||'Τμήμα');appendLessonStatus(tr,l);
   }
+  // Ημερολόγιο με επτά στήλες και χρώμα ανά τμήμα.
+  const calendar=$('weekCalendar');calendar.replaceChildren();
+  const colors=['#2563eb','#db2777','#0d9488','#9333ea','#d97706','#0891b2','#65a30d','#e11d48'];
+  const groupColors=new Map(groups.data.map((g,i)=>[g.id,colors[i%colors.length]]));
+  const allLessons=current.filter(l=>l.group_id&&byGroup.has(l.group_id)).sort((a,b)=>a.lesson_date.localeCompare(b.lesson_date)||(a.start_time||'').localeCompare(b.start_time||''));
+  const statusText={scheduled:'Προγραμματισμένο',completed:'Πραγματοποιήθηκε',cancelled:'Δεν πραγματοποιήθηκε'};
+  for(let i=0;i<7;i++){
+   const column=document.createElement('section');column.className='week-day';
+   const heading=document.createElement('h3');heading.textContent=days[(i+1)%7]+' '+dates[i].split('-').reverse().join('/');column.append(heading);
+   for(const lesson of allLessons.filter(l=>l.lesson_date===dates[i])){
+    const btn=document.createElement('button');btn.type='button';btn.className='week-event';
+    const makeup=(lesson.notes||'').includes('[ΑΝΑΠΛΗΡΩΣΗ:');
+    if(makeup)btn.classList.add('makeup');
+    if(lesson.lesson_status==='cancelled')btn.classList.add('cancelled');
+    if(lesson.lesson_status==='completed')btn.classList.add('completed');
+    btn.style.setProperty('--event-color',groupColors.get(lesson.group_id)||'#2555bd');
+    const hours=document.createElement('strong');hours.textContent=[lesson.start_time?.slice(0,5),lesson.end_time?.slice(0,5)].filter(Boolean).join('–')||'Χωρίς ώρα';
+    const group=document.createElement('span');group.textContent=byGroup.get(lesson.group_id)?.name||'Τμήμα';
+    const info=document.createElement('small');info.textContent=(makeup?'Αναπλήρωση · ':'')+(statusText[lesson.lesson_status]||'Προγραμματισμένο');
+    btn.append(hours,group,info);
+    btn.onclick=()=>{
+     const title=byGroup.get(lesson.group_id)?.name||'Τμήμα';
+     const detail='Μάθημα: '+title+'\nΗμερομηνία: '+lesson.lesson_date+'\nΏρα: '+hours.textContent+'\nΚατάσταση: '+info.textContent+'\nΣημειώσεις: '+(lesson.notes||'—');
+     if(confirm(detail+'\n\nOK: Άνοιγμα παρουσιών / Ακύρωση: Κλείσιμο'))showAttendance(lesson,title);
+    };
+    column.append(btn);
+   }
+   calendar.append(column);
+  }
   if(!expected.length&&!makeups.length){const tr=body.insertRow();const cell=tr.insertCell();cell.colSpan=4;cell.textContent='Δεν υπάρχουν προγραμματισμένα μαθήματα αυτή την εβδομάδα.'}
   if(created)await loadAssessments();
   setStatus(created?'Δημιουργήθηκαν '+created+' μαθήματα για την εβδομάδα.':'Το εβδομαδιαίο πρόγραμμα είναι ενημερωμένο.');
@@ -391,6 +422,7 @@ async function openWeeklySchedule(){
 $('prevWeek').onclick=()=>{weekOffset--;openWeeklySchedule()};
 $('nextWeek').onclick=()=>{weekOffset++;openWeeklySchedule()};
 $('thisWeek').onclick=()=>{weekOffset=0;openWeeklySchedule()};
+$('printWeek').onclick=()=>window.print();
 
 
 // Παρουσιολόγιο: μία εγγραφή ανά μαθητή και μάθημα.
