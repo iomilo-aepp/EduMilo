@@ -517,6 +517,10 @@ async function loadFinances(){
    const tr=table.insertRow();
    for(const v of [g.name,hours.toLocaleString('el-GR',{maximumFractionDigits:2}),eur(g.hourly_rate),eur(charge),eur(paid),eur(charge-paid)])td(tr,v);
   }
+  if(visible.length){
+   const totalRow=table.insertRow();totalRow.style.fontWeight='700';totalRow.style.background='#eef3ff';
+   for(const value of ['ΣΥΝΟΛΟ ΜΗΝΑ',totalHours.toLocaleString('el-GR',{maximumFractionDigits:2}),'—',eur(totalCharge),eur(totalPaid),eur(totalCharge-totalPaid)])td(totalRow,value);
+  }
   if(!visible.length){const tr=table.insertRow(),c=tr.insertCell();c.colSpan=6;c.textContent='Δεν υπάρχουν τμήματα για αυτή την επιλογή.'}
   $('financeSummary').textContent='Ώρες: '+totalHours.toLocaleString('el-GR',{maximumFractionDigits:2})+' | Χρεώσεις: '+eur(totalCharge)+' | Πληρωμές: '+eur(totalPaid)+' | Υπόλοιπο μήνα: '+eur(totalCharge-totalPaid)+(missingTimes?' | Προσοχή: '+missingTimes+' πραγματοποιημένα μαθήματα χωρίς έγκυρη ώρα έναρξης/λήξης δεν υπολογίστηκαν.':'');
   const payBody=$('financePaymentRows');payBody.replaceChildren();
