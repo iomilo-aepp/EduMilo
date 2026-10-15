@@ -6,7 +6,7 @@
 <section id="config" class="card"><h1>Αρχική σύνδεση Supabase</h1><p class="muted">Συμπλήρωσε το Project URL και το δημόσιο Publishable Key από το δικό σου Supabase project EduMilo. Μη βάλεις secret ή service_role key.</p><form id="configForm"><label>Project URL<input id="url" type="url" placeholder="https://xxxxx.supabase.co" required></label><label>Publishable key<input id="key" placeholder="sb_publishable_..." required></label><button>Αποθήκευση και σύνδεση</button></form></section>
 <section id="auth" class="card hidden"><h1>Σύνδεση</h1><p class="muted">Χρησιμοποίησε τον λογαριασμό που δημιούργησες στο Supabase Authentication.</p><form id="loginForm"><label>Email<input id="email" type="email" required autocomplete="username"></label><label>Κωδικός<input id="password" type="password" required autocomplete="current-password"></label><button>Είσοδος</button></form><p><button id="changeConfig" class="secondary">Αλλαγή Supabase project</button></p></section>
 <section id="pin" class="card hidden"><h1 id="pinTitle">Ξεκλείδωμα EduMilo</h1><p id="pinHint" class="muted"></p><form id="pinForm"><label>Τετραψήφιο PIN<input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required></label><label id="pinConfirmWrap" class="hidden">Επιβεβαίωση PIN<input id="pinConfirm" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off"></label><button id="pinSubmit">Συνέχεια</button></form><p class="pin-actions"><button type="button" id="pinEmail" class="secondary">Είσοδος με email και κωδικό</button></p></section>
-<section id="app" class="hidden"><h1>Πίνακας διαχείρισης</h1><div class="card" id="yearPanel"><label><b>Σχολικό έτος</b><select id="schoolYearSelect" style="width:100%;margin-top:8px"></select></label><form id="yearForm" class="two" style="margin-top:12px"><label>Νέο σχολικό έτος<input id="yearName" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required></label><button>Προσθήκη σχολικού έτους</button></form></div><p id="identity" class="muted"></p><p><button id="changePin" class="secondary">Αλλαγή PIN</button></p><nav><button data-tab="home" class="active">Αρχική</button><button data-tab="students">Μαθητές</button><button data-tab="subjects">Μαθήματα</button><button data-tab="groups">Τμήματα / Ιδιαίτερα</button><button data-tab="sessions">Ημερολόγιο μαθημάτων</button><button data-tab="attendance">Παρουσιολόγιο</button><button data-tab="marks">Βαθμολογίες</button><button data-tab="reports">Αναφορές παρουσιών</button><button data-tab="backup">Backup / Επαναφορά</button></nav>
+<section id="app" class="hidden"><h1>Πίνακας διαχείρισης</h1><div class="card" id="yearPanel"><label><b>Σχολικό έτος</b><select id="schoolYearSelect" style="width:100%;margin-top:8px"></select></label><form id="yearForm" class="two" style="margin-top:12px"><label>Νέο σχολικό έτος<input id="yearName" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required></label><button>Προσθήκη σχολικού έτους</button></form></div><p id="identity" class="muted"></p><p><button id="changePin" class="secondary">Αλλαγή PIN</button></p><nav><button data-tab="home" class="active">Αρχική</button><button data-tab="students">Μαθητές</button><button data-tab="subjects">Μαθήματα</button><button data-tab="groups">Τμήματα / Ιδιαίτερα</button><button data-tab="sessions">Ημερολόγιο μαθημάτων</button><button data-tab="attendance">Παρουσιολόγιο</button><button data-tab="marks">Βαθμολογίες</button><button data-tab="reports">Αναφορές παρουσιών</button><button data-tab="finances">Οικονομικά</button><button data-tab="backup">Backup / Επαναφορά</button></nav>
 <div id="home" class="tab card"><h2>Σύνοψη</h2><div class="stats"><div class="stat">Μαθητές<b id="studentCount">0</b></div><div class="stat">Μαθήματα<b id="subjectCount">0</b></div><div class="stat">Τμήματα / Ιδιαίτερα<b id="groupCount">0</b></div></div></div>
 <div id="students" class="tab card hidden"><h2>Νέος μαθητής</h2><form id="studentForm" class="two"><label>Ονοματεπώνυμο<input name="full_name" required maxlength="150"></label><label>Τάξη<input name="school_grade" placeholder="π.χ. Γ' Λυκείου" maxlength="60"></label><label>Τηλέφωνο<input name="phone" maxlength="40"></label><button>Προσθήκη μαθητή</button></form><h2>Μαθητές</h2><div class="scroll"><table><thead><tr><th>Ονοματεπώνυμο</th><th>Τάξη</th><th>Τηλέφωνο</th><th></th></tr></thead><tbody id="studentRows"></tbody></table></div></div>
 <div id="subjects" class="tab card hidden"><h2>Νέο μάθημα</h2><form id="subjectForm" class="two"><label>Όνομα μαθήματος<input name="name" required maxlength="150" placeholder="π.χ. Πληροφορική"></label><label>Χρέωση ανά ώρα (€)<input name="hourly_rate" type="number" min="0" step="0.01" value="0" required></label><button>Προσθήκη μαθήματος</button></form><h2>Μαθήματα</h2><div class="scroll"><table><thead><tr><th>Μάθημα</th><th>Χρέωση</th><th></th></tr></thead><tbody id="subjectRows"></tbody></table></div></div>
@@ -24,6 +24,14 @@
 <div id="attendancePanel" class="group-card hidden"><h3 id="attendanceTitle"></h3><div id="attendanceList"></div><p><button type="button" id="attendanceSave">Αποθήκευση παρουσιών</button></p></div></div>
 <div id="marks" class="tab card hidden"><h2>Βαθμός τεστ / διαγωνίσματος</h2><form id="gradeForm" class="two"><label>Μαθητής<select name="student_id" id="gradeStudent" required></select></label><label>Μάθημα<select name="subject_id" id="gradeSubject" required></select></label><label>Τύπος αξιολόγησης<select id="gradeType"><option>Τεστ</option><option>Διαγώνισμα</option></select></label><label>Τίτλος<input name="exam_title" id="gradeTitle" required maxlength="150" placeholder="π.χ. Δομές επανάληψης"></label><label>Ημερομηνία<input type="date" name="exam_date" required></label><label>Βαθμός (0–20)<input type="number" name="grade" min="0" max="20" step="0.01" required></label><button>Αποθήκευση βαθμού</button></form><h2>Ιστορικό βαθμών</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Μαθητής</th><th>Μάθημα</th><th>Αξιολόγηση</th><th>Βαθμός</th><th></th></tr></thead><tbody id="gradeRows"></tbody></table></div></div>
 <div id="reports" class="tab card hidden"><h2>Μηνιαία αναφορά παρουσιών</h2><p class="muted">Οι υπολογισμοί αφορούν τις παρουσίες που έχουν ήδη καταχωριστεί. Τα μαθήματα χωρίς καταχώριση παρουσίας δεν μετρούν ως απουσίες.</p><div class="two" style="display:grid;gap:12px"><label>Μήνας<input type="month" id="reportMonth"></label><label>Τμήμα<select id="reportGroup"><option value="">Όλα τα τμήματα</option></select></label></div><p id="reportSummary" class="muted"></p><div class="scroll"><table><thead><tr><th>Μαθητής</th><th>Τμήμα</th><th>Καταχωρίσεις</th><th>Παρουσίες</th><th>Απουσίες</th><th>Ποσοστό</th></tr></thead><tbody id="reportRows"></tbody></table></div></div>
+<div id="finances" class="tab card hidden"><h2>Οικονομικά τμημάτων</h2>
+<p class="muted">Η χρέωση αφορά ολόκληρο το τμήμα: ώρες μαθημάτων με κατάσταση «Πραγματοποιήθηκε» × ωριαία χρέωση τμήματος. Τα προγραμματισμένα ή ακυρωμένα μαθήματα δεν χρεώνονται. Οι πληρωμές καταχωρίζονται ανά τμήμα.</p>
+<div class="two" style="display:grid;gap:12px"><label>Μήνας<input id="financeMonth" type="month"></label><label>Τμήμα<select id="financeGroup"><option value="">Όλα τα τμήματα</option></select></label></div>
+<p id="financeSummary" class="muted"></p>
+<div class="scroll"><table><thead><tr><th>Τμήμα</th><th>Ώρες</th><th>€/ώρα</th><th>Χρέωση</th><th>Πληρωμές</th><th>Υπόλοιπο μήνα</th></tr></thead><tbody id="financeRows"></tbody></table></div>
+<h2>Νέα πληρωμή</h2><form id="financePaymentForm" class="two"><label>Τμήμα<select name="group_id" id="financePaymentGroup" required></select></label><label>Ημερομηνία<input name="payment_date" type="date" required></label><label>Ποσό (€)<input name="amount" type="number" min="0.01" step="0.01" required></label><button type="submit">Αποθήκευση πληρωμής</button></form>
+<h2>Πληρωμές επιλεγμένου μήνα</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ποσό</th><th></th></tr></thead><tbody id="financePaymentRows"></tbody></table></div>
+<p class="muted">Το υπόλοιπο υπολογίζεται μόνο για τον επιλεγμένο μήνα, όχι ως συνολικό χρέος προηγούμενων μηνών. Για αλλαγές στην ωριαία χρέωση χρησιμοποιείται η τρέχουσα τιμή του τμήματος.</p></div>
 <div id="backup" class="tab card hidden"><h2>Αντίγραφα ασφαλείας</h2><p>Το αντίγραφο περιέχει <b>όλες τις σχολικές χρονιές</b> και τα δεδομένα του λογαριασμού σου. Το αρχείο περιέχει προσωπικά δεδομένα μαθητών: φύλαξέ το σε ασφαλές μέρος.</p><p><button id="backupDownload">Λήψη πλήρους backup (.json)</button></p><hr><h2>Επαναφορά backup</h2><p class="muted">Για ασφάλεια η επαναφορά επιτρέπεται μόνο όταν οι πίνακες δεδομένων είναι άδειοι. Πρώτα κατέβασε backup και έλεγξε το αρχείο. Η επαναφορά δεν είναι ατομική: σε περίπτωση σφάλματος μπορεί να χρειαστεί διόρθωση.</p><label>Επιλογή αρχείου JSON<input id="backupFile" type="file" accept=".json,application/json"></label><p><button id="backupRestore" class="secondary">Επαναφορά από αρχείο</button></p><hr><h2>Διαγραφή όλων των δεδομένων</h2><p class="error">Προσοχή: διαγράφονται οριστικά οι εγγραφές όλων των σχολικών ετών. Ο λογαριασμός Supabase και το PIN δεν διαγράφονται.</p><p><button id="backupDelete" class="danger">Διαγραφή όλων των δεδομένων</button></p></div>
 </section></main>
 <script type="module">
@@ -44,7 +52,7 @@ $('pinEmail').onclick=async()=>{unlockedUser=null;await client.auth.signOut();se
 $('changePin').onclick=()=>pinScreen(true);
 $('configForm').addEventListener('submit',e=>{e.preventDefault();let url=$('url').value.trim().replace(/\/$/,'');let key=$('key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key.startsWith('sb_publishable_')&&!key.startsWith('eyJ')){setStatus('Έλεγξε το Project URL και το δημόσιο key.',true);return}localStorage.setItem('edumilo_url',url);localStorage.setItem('edumilo_key',key);setStatus('Αποθηκεύτηκαν οι ρυθμίσεις.');connect()});
 $('changeConfig').onclick=()=>{localStorage.removeItem('edumilo_url');localStorage.removeItem('edumilo_key');location.reload()};$('loginForm').addEventListener('submit',async e=>{e.preventDefault();setStatus('Σύνδεση...');const {error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});setStatus(error?error.message:'Συνδέθηκες.',!!error)});$('logout').onclick=async()=>{unlockedUser=null;await client.auth.signOut();setStatus('Αποσυνδέθηκες.')};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab));if(b.dataset.tab==='sessions')openWeeklySchedule();if(b.dataset.tab==='reports')loadAttendanceReport().catch(e=>setStatus(e.message,true));if(b.dataset.tab==='attendance'&&!attendanceLesson)loadAssessments().catch(e=>setStatus(e.message,true));});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab));if(b.dataset.tab==='sessions')openWeeklySchedule();if(b.dataset.tab==='finances')loadFinances().catch(e=>setStatus('Σφάλμα οικονομικών: '+e.message,true));if(b.dataset.tab==='reports')loadAttendanceReport().catch(e=>setStatus(e.message,true));if(b.dataset.tab==='attendance'&&!attendanceLesson)loadAssessments().catch(e=>setStatus(e.message,true));});
 const td=(tr,value)=>{let cell=tr.insertCell();cell.textContent=value??'';return cell};async function load(table,bodyId,fields){const {data,error}=await client.from(table).select('*').order('created_at',{ascending:false});if(error){throw new Error('Σφάλμα '+table+': '+error.message)}const body=$(bodyId);body.replaceChildren();for(const item of data){const tr=body.insertRow();for(const field of fields)td(tr,field==='hourly_rate'?Number(item[field]).toFixed(2)+' €':item[field]);const action=tr.insertCell();const button=document.createElement('button');button.textContent='Διαγραφή';button.className='danger';button.onclick=async()=>{if(!confirm('Να διαγραφεί η εγγραφή;'))return;const {error}=await client.from(table).delete().eq('id',item.id).eq('user_id',user.id);if(error)setStatus(error.message,true);else{await refresh();setStatus('Η εγγραφή διαγράφηκε.')}};action.append(button)}$(table==='students'?'studentCount':'subjectCount').textContent=data.length}
 async function refresh(){
  if(!user||unlockedUser!==user.id)throw Error('Η συνεδρία δεν είναι ξεκλείδωτη.');
@@ -190,7 +198,7 @@ async function initializeYears(){
 $('schoolYearSelect').addEventListener('change',async e=>{
  selectedYear=e.target.value;
  if(user)localStorage.setItem('edumilo_year_'+user.id,selectedYear);
- await refresh();if(!$('sessions').classList.contains('hidden'))await openWeeklySchedule();setStatus('Εμφανίζονται τα στοιχεία του επιλεγμένου σχολικού έτους.');
+ await refresh();if(!$('sessions').classList.contains('hidden'))await openWeeklySchedule();if(!$('finances').classList.contains('hidden'))await loadFinances();setStatus('Εμφανίζονται τα στοιχεία του επιλεγμένου σχολικού έτους.');
 });
 $('yearForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!user||unlockedUser!==user.id)return;
@@ -456,6 +464,84 @@ async function loadAttendanceReport(){
 }
 $('reportMonth').onchange=()=>loadAttendanceReport().catch(e=>setStatus(e.message,true));
 $('reportGroup').onchange=()=>loadAttendanceReport().catch(e=>setStatus(e.message,true));
+
+
+// Οικονομικά: πραγματικές ώρες ανά τμήμα και πολλαπλές πληρωμές ανά μήνα.
+const eur=n=>Number(n||0).toLocaleString('el-GR',{style:'currency',currency:'EUR'});
+let financeLoading=false;
+function financeMonthValue(){return $('financeMonth').value||isoLocal(new Date()).slice(0,7)}
+function financeDuration(l){
+ if(!l.start_time||!l.end_time)return 0;
+ const parse=t=>{const [h,m]=t.split(':').map(Number);return h*60+m};
+ const mins=parse(l.end_time)-parse(l.start_time);
+ return Number.isFinite(mins)&&mins>0?mins/60:0;
+}
+async function loadFinances(){
+ if(!user||unlockedUser!==user.id||!yearReady||financeLoading)return;
+ financeLoading=true;
+ try{
+  if(!$('financeMonth').value)$('financeMonth').value=isoLocal(new Date()).slice(0,7);
+  const month=financeMonthValue(),start=month+'-01',end=isoLocal(new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0));
+  const [groups,lessons,payments]=await Promise.all([
+   yearFilter(client.from('teaching_groups').select('id,name,hourly_rate').eq('user_id',user.id)).order('name'),
+   yearFilter(client.from('lessons').select('id,group_id,start_time,end_time,lesson_status').eq('user_id',user.id)).gte('lesson_date',start).lte('lesson_date',end),
+   client.from('payments').select('id,group_id,payment_date,amount').eq('user_id',user.id).gte('payment_date',start).lte('payment_date',end)
+  ]);
+  for(const [label,r] of [['τμήματα',groups],['μαθήματα',lessons],['πληρωμές',payments]])if(r.error)throw Error(label+': '+r.error.message);
+  const groupPicker=$('financeGroup'),old=groupPicker.value;groupPicker.replaceChildren();option(groupPicker,'','Όλα τα τμήματα');
+  for(const g of groups.data)option(groupPicker,g.id,g.name);
+  groupPicker.value=groups.data.some(g=>g.id===old)?old:'';
+  const payPicker=$('financePaymentGroup'),payOld=payPicker.value;payPicker.replaceChildren();option(payPicker,'','Επίλεξε τμήμα');
+  for(const g of groups.data)option(payPicker,g.id,g.name);
+  payPicker.value=groups.data.some(g=>g.id===payOld)?payOld:'';
+  const visible=groups.data.filter(g=>!groupPicker.value||g.id===groupPicker.value);
+  const table=$('financeRows');table.replaceChildren();
+  let totalCharge=0,totalPaid=0,totalHours=0,missingTimes=0;
+  for(const g of visible){
+   const done=lessons.data.filter(l=>l.group_id===g.id&&l.lesson_status==='completed');
+   const hours=done.reduce((a,l)=>a+financeDuration(l),0);
+   missingTimes+=done.filter(l=>!financeDuration(l)).length;
+   const charge=Math.round(hours*Number(g.hourly_rate||0)*100)/100;
+   const paid=Math.round(payments.data.filter(p=>p.group_id===g.id).reduce((a,p)=>a+Number(p.amount||0),0)*100)/100;
+   totalHours+=hours;totalCharge+=charge;totalPaid+=paid;
+   const tr=table.insertRow();
+   for(const v of [g.name,hours.toLocaleString('el-GR',{maximumFractionDigits:2}),eur(g.hourly_rate),eur(charge),eur(paid),eur(charge-paid)])td(tr,v);
+  }
+  if(!visible.length){const tr=table.insertRow(),c=tr.insertCell();c.colSpan=6;c.textContent='Δεν υπάρχουν τμήματα για αυτή την επιλογή.'}
+  $('financeSummary').textContent='Ώρες: '+totalHours.toLocaleString('el-GR',{maximumFractionDigits:2})+' | Χρεώσεις: '+eur(totalCharge)+' | Πληρωμές: '+eur(totalPaid)+' | Υπόλοιπο μήνα: '+eur(totalCharge-totalPaid)+(missingTimes?' | Προσοχή: '+missingTimes+' πραγματοποιημένα μαθήματα χωρίς έγκυρη ώρα έναρξης/λήξης δεν υπολογίστηκαν.':'');
+  const payBody=$('financePaymentRows');payBody.replaceChildren();
+  const shown=payments.data.filter(p=>visible.some(g=>g.id===p.group_id)).sort((a,b)=>b.payment_date.localeCompare(a.payment_date));
+  for(const p of shown){
+   const tr=payBody.insertRow();
+   for(const v of [p.payment_date,groups.data.find(g=>g.id===p.group_id)?.name||'—',eur(p.amount)])td(tr,v);
+   const cell=tr.insertCell(),b=document.createElement('button');b.type='button';b.className='danger smallbtn';b.textContent='Διαγραφή';
+   b.onclick=async()=>{
+    if(!confirm('Να διαγραφεί αυτή η πληρωμή;'))return;
+    b.disabled=true;
+    const {error}=await client.from('payments').delete().eq('id',p.id).eq('user_id',user.id);
+    if(error){b.disabled=false;return setStatus('Σφάλμα διαγραφής: '+error.message,true)}
+    await loadFinances();setStatus('Η πληρωμή διαγράφηκε.');
+   };
+   cell.append(b);
+  }
+ }finally{financeLoading=false}
+}
+$('financeMonth').onchange=()=>loadFinances().catch(e=>setStatus('Σφάλμα οικονομικών: '+e.message,true));
+$('financeGroup').onchange=()=>loadFinances().catch(e=>setStatus('Σφάλμα οικονομικών: '+e.message,true));
+$('financePaymentForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!user||unlockedUser!==user.id)return;
+ const form=e.currentTarget,btn=form.querySelector('button[type=submit]'),f=new FormData(form);
+ if(btn.disabled)return;
+ const amount=Number(f.get('amount')),group_id=f.get('group_id'),payment_date=f.get('payment_date');
+ if(!group_id||!payment_date||!Number.isFinite(amount)||amount<=0)return setStatus('Συμπλήρωσε τμήμα, ημερομηνία και θετικό ποσό.',true);
+ btn.disabled=true;
+ try{
+  const {error}=await client.from('payments').insert({user_id:user.id,group_id,payment_date,amount});
+  if(error)throw error;
+  form.reset();await loadFinances();setStatus('Η πληρωμή αποθηκεύτηκε.');
+ }catch(err){setStatus('Δεν αποθηκεύτηκε η πληρωμή: '+err.message,true)}
+ finally{btn.disabled=false}
+});
 
 // Πλήρες backup όλων των σχολικών ετών και ασφαλείς λειτουργίες συντήρησης.
 const backupTables=['school_years','students','subjects','teaching_groups','group_schedule','group_students','enrollments','lessons','attendance','payments','grades'];
