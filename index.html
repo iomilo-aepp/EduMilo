@@ -422,7 +422,30 @@ async function openWeeklySchedule(){
 $('prevWeek').onclick=()=>{weekOffset--;openWeeklySchedule()};
 $('nextWeek').onclick=()=>{weekOffset++;openWeeklySchedule()};
 $('thisWeek').onclick=()=>{weekOffset=0;openWeeklySchedule()};
-$('printWeek').onclick=()=>window.print();
+$('printWeek').onclick=()=>{
+ const calendar=$('weekCalendar');
+ if(!calendar||!calendar.children.length){setStatus('Δεν υπάρχει εβδομαδιαίο πρόγραμμα για εκτύπωση.',true);return}
+ const frame=document.createElement('iframe');
+ frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0';
+ frame.setAttribute('title','Εκτύπωση εβδομαδιαίου προγράμματος');
+ document.body.appendChild(frame);
+ const doc=frame.contentDocument;
+ const title=doc.createElement('title');title.textContent='EduMilo - Εβδομαδιαίο πρόγραμμα';
+ const style=doc.createElement('style');
+ style.textContent='@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#17233b;margin:0}h1{font-size:20px;margin:0 0 10px}h2{font-size:14px;margin:0 0 15px}.week-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}.week-day{border:1px solid #ccd4e1;border-radius:6px;padding:5px;min-height:120px;break-inside:avoid}.week-day h3{font-size:11px;margin:0 0 8px}.week-event{display:block;width:100%;text-align:left;background:#f3f6fc;color:#17233b;border:1px solid #dce3ef;border-left:4px solid #2555bd;border-radius:4px;padding:5px;margin:4px 0;font-size:10px;white-space:normal;break-inside:avoid}.week-event strong,.week-event small{display:block}.week-event small{margin-top:3px}.week-event.cancelled{text-decoration:line-through;opacity:.65}.week-event.completed{background:#edf8f0}.week-event.makeup{outline:1px dashed #b78420}';
+ doc.head.append(title,style);
+ const h=doc.createElement('h1');h.textContent='EduMilo — Εβδομαδιαίο πρόγραμμα';doc.body.appendChild(h);
+ const sub=doc.createElement('h2');sub.textContent=$('weekLabel').textContent;doc.body.appendChild(sub);
+ const clone=calendar.cloneNode(true);
+ clone.querySelectorAll('button').forEach(button=>{
+  const replacement=doc.createElement('div');replacement.className=button.className;replacement.innerHTML=button.innerHTML;
+  button.replaceWith(replacement);
+ });
+ doc.body.appendChild(doc.importNode(clone,true));
+ const cleanup=()=>{setTimeout(()=>frame.remove(),1200)};
+ frame.contentWindow.addEventListener('afterprint',cleanup,{once:true});
+ setTimeout(()=>{try{frame.contentWindow.focus();frame.contentWindow.print()}catch(e){cleanup();setStatus('Η εκτύπωση απέτυχε: '+e.message,true)}},200);
+};
 
 
 // Παρουσιολόγιο: μία εγγραφή ανά μαθητή και μάθημα.
