@@ -43,7 +43,7 @@ $('pinEmail').onclick=async()=>{unlockedUser=null;await client.auth.signOut();se
 $('changePin').onclick=()=>pinScreen(true);
 $('configForm').addEventListener('submit',e=>{e.preventDefault();let url=$('url').value.trim().replace(/\/$/,'');let key=$('key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key.startsWith('sb_publishable_')&&!key.startsWith('eyJ')){setStatus('Έλεγξε το Project URL και το δημόσιο key.',true);return}localStorage.setItem('edumilo_url',url);localStorage.setItem('edumilo_key',key);setStatus('Αποθηκεύτηκαν οι ρυθμίσεις.');connect()});
 $('changeConfig').onclick=()=>{localStorage.removeItem('edumilo_url');localStorage.removeItem('edumilo_key');location.reload()};$('loginForm').addEventListener('submit',async e=>{e.preventDefault();setStatus('Σύνδεση...');const {error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});setStatus(error?error.message:'Συνδέθηκες.',!!error)});$('logout').onclick=async()=>{unlockedUser=null;await client.auth.signOut();setStatus('Αποσυνδέθηκες.')};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab));if(b.dataset.tab==='sessions')openWeeklySchedule();if(b.dataset.tab==='attendance')loadAssessments().catch(e=>setStatus(e.message,true));});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab));if(b.dataset.tab==='sessions')openWeeklySchedule();if(b.dataset.tab==='attendance'&&!attendanceLesson)loadAssessments().catch(e=>setStatus(e.message,true));});
 const td=(tr,value)=>{let cell=tr.insertCell();cell.textContent=value??'';return cell};async function load(table,bodyId,fields){const {data,error}=await client.from(table).select('*').order('created_at',{ascending:false});if(error){throw new Error('Σφάλμα '+table+': '+error.message)}const body=$(bodyId);body.replaceChildren();for(const item of data){const tr=body.insertRow();for(const field of fields)td(tr,field==='hourly_rate'?Number(item[field]).toFixed(2)+' €':item[field]);const action=tr.insertCell();const button=document.createElement('button');button.textContent='Διαγραφή';button.className='danger';button.onclick=async()=>{if(!confirm('Να διαγραφεί η εγγραφή;'))return;const {error}=await client.from(table).delete().eq('id',item.id).eq('user_id',user.id);if(error)setStatus(error.message,true);else{await refresh();setStatus('Η εγγραφή διαγράφηκε.')}};action.append(button)}$(table==='students'?'studentCount':'subjectCount').textContent=data.length}
 async function refresh(){
  if(!user||unlockedUser!==user.id)throw Error('Η συνεδρία δεν είναι ξεκλείδωτη.');
@@ -280,7 +280,10 @@ async function showAttendance(lesson,groupName){
   for(const [label,r] of [['μαθητές τμήματος',members],['μαθητές',students],['παρουσίες',records]])
    if(r.error)throw Error(label+': '+r.error.message);
   attendanceLesson=lesson;
-  document.querySelector('[data-tab="attendance"]').click();
+  // Εναλλαγή καρτέλας χωρίς επαναφόρτωση που θα έκρυβε τα ονόματα.
+  const attendanceTab=document.querySelector('[data-tab="attendance"]');
+  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===attendanceTab));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!=='attendance'));
   $('attendanceLessonSelect').value=lesson.id;
   $('attendanceTitle').textContent=groupName+' — '+lesson.lesson_date;
   const root=$('attendanceList');root.replaceChildren();
@@ -296,7 +299,7 @@ async function showAttendance(lesson,groupName){
    if(old&&!['present','absent'].includes(old.status))option(sel,old.status,'Παλιά τιμή: '+old.status);
    sel.value=old?.status||'';line.append(label,sel);root.append(line);
   }
-  if(!people.length){const p=document.createElement('p');p.textContent='Δεν υπάρχουν μαθητές σε αυτό το τμήμα.';root.append(p)}
+  if(!people.length){const p=document.createElement('p');p.textContent='Δεν υπάρχουν μαθητές συνδεδεμένοι με αυτό το τμήμα. Πρόσθεσέ τους από «Τμήματα / Ιδιαίτερα».';root.append(p)}
   $('attendancePanel').classList.remove('hidden');
   $('attendancePanel').scrollIntoView({behavior:'smooth',block:'nearest'});
  }catch(e){setStatus('Σφάλμα παρουσιολογίου: '+e.message,true)}
