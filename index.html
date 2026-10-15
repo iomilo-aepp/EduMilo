@@ -121,7 +121,37 @@ async function loadGroups(){
  const del=document.createElement('button');del.className='danger smallbtn';del.textContent='Διαγραφή τμήματος';del.onclick=async()=>{if(!confirm('Να διαγραφεί το τμήμα και οι συμμετοχές του;'))return;const {error}=await client.from('teaching_groups').delete().eq('id',g.id).eq('user_id',user.id);if(error)setStatus(error.message,true);else{await loadGroups();setStatus('Το τμήμα διαγράφηκε.')}};card.append(del);root.append(card)
  }
 }
-$('groupForm').addEventListener('submit',async e=>{e.preventDefault();if(!user)return;const f=new FormData(e.currentTarget);if(!f.get('subject_id'))return setStatus('Δημιούργησε πρώτα ένα μάθημα.',true);const start=f.get('start_time'),end=f.get('end_time');if(start&&end&&end<=start)return setStatus('Η ώρα λήξης πρέπει να είναι μετά την έναρξη.',true);const record={user_id:user.id,name:String(f.get('name')).trim(),subject_id:f.get('subject_id'),teaching_type:f.get('teaching_type'),day_of_week:f.get('day_of_week')===''?null:Number(f.get('day_of_week')),start_time:start||null,end_time:end||null,hourly_rate:Number(f.get('hourly_rate')||0),monthly_fee:Number(f.get('monthly_fee')||0),school_year_id:selectedYear||null};const {data,error}=await client.from('teaching_groups').insert(record).select('id').single();if(error)setStatus(error.message,true);else{if(record.day_of_week!==null&&start&&end){const {error:se}=await client.from('group_schedule').insert({user_id:user.id,group_id:data.id,day_of_week:record.day_of_week===0?7:record.day_of_week,start_time:start,end_time:end});if(se)return setStatus('Το τμήμα δημιουργήθηκε, αλλά η ώρα δεν αποθηκεύτηκε: '+se.message,true);await client.from('teaching_groups').update({day_of_week:null,start_time:null,end_time:null}).eq('id',data.id).eq('user_id',user.id)}e.currentTarget.reset();if(await syncAfterWrite())setStatus('Το τμήμα δημιουργήθηκε.')}});
+$('groupForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!user||unlockedUser!==user.id)return setStatus('Συνδέσου ξανά.',true);
+ const form=e.currentTarget,button=form.querySelector('button[type=submit],button:not([type])');
+ if(button?.disabled)return;
+ const f=new FormData(form);
+ if(!f.get('subject_id'))return setStatus('Δημιούργησε πρώτα ένα μάθημα.',true);
+ const start=f.get('start_time'),end=f.get('end_time');
+ if(start&&end&&end<=start)return setStatus('Η ώρα λήξης πρέπει να είναι μετά την έναρξη.',true);
+ const record={user_id:user.id,name:String(f.get('name')).trim(),subject_id:f.get('subject_id'),teaching_type:f.get('teaching_type'),day_of_week:f.get('day_of_week')===''?null:Number(f.get('day_of_week')),start_time:start||null,end_time:end||null,hourly_rate:Number(f.get('hourly_rate')||0),monthly_fee:Number(f.get('monthly_fee')||0),school_year_id:selectedYear||null};
+ if(button)button.disabled=true;
+ try{
+  const {data,error}=await client.from('teaching_groups').insert(record).select('id,name,teaching_type').single();
+  if(error)throw error;
+  // Εμφάνιση αμέσως, ανεξάρτητα από τη φόρτωση των άλλων πινάκων.
+  const root=$('groupCards');
+  const empty=root.querySelector('p.muted');if(empty?.textContent==='Δεν υπάρχουν τμήματα ακόμη.')empty.remove();
+  const card=document.createElement('div');card.className='group-card';card.dataset.groupId=data.id;
+  const heading=document.createElement('h3');heading.textContent=data.name+' · '+(data.teaching_type==='private'?'Ιδιαίτερο':'Ομαδικό');card.append(heading);
+  const notice=document.createElement('p');notice.className='muted';notice.textContent='Το τμήμα αποθηκεύτηκε. Φόρτωση εβδομαδιαίου προγράμματος…';card.append(notice);
+  root.prepend(card);$('groupCount').textContent=String(root.querySelectorAll('.group-card').length);
+  form.reset();setStatus('Το τμήμα αποθηκεύτηκε και εμφανίστηκε αμέσως.');
+  if(record.day_of_week!==null&&start&&end){
+   const {error:se}=await client.from('group_schedule').insert({user_id:user.id,group_id:data.id,day_of_week:record.day_of_week===0?7:record.day_of_week,start_time:start,end_time:end});
+   if(se)setStatus('Το τμήμα αποθηκεύτηκε, αλλά η ώρα δεν αποθηκεύτηκε: '+se.message,true);
+   else await client.from('teaching_groups').update({day_of_week:null,start_time:null,end_time:null}).eq('id',data.id).eq('user_id',user.id);
+  }
+  // Φόρτωση πλήρους κάρτας στο παρασκήνιο, χωρίς να αναιρείται η άμεση εμφάνιση.
+  try{await loadGroups();await loadAssessments()}catch(err){console.warn('EduMilo: group refresh failed',err);notice.textContent='Το τμήμα αποθηκεύτηκε. Δεν φορτώθηκαν όλες οι λεπτομέρειες: '+(err?.message||err);if(!card.isConnected)root.prepend(card);setStatus('Το τμήμα αποθηκεύτηκε, αλλά η ανανέωση παρουσίασε σφάλμα: '+(err?.message||err),true)}
+ }catch(err){setStatus('Δεν δημιουργήθηκε το τμήμα: '+(err?.message||err),true)}
+ finally{if(button)button.disabled=false}
+});
 
 
 
