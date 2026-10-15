@@ -17,7 +17,7 @@
 <div class="group-actions"><button type="button" id="prevWeek" class="secondary">← Προηγούμενη</button><button type="button" id="thisWeek" class="secondary">Τρέχουσα εβδομάδα</button><button type="button" id="nextWeek" class="secondary">Επόμενη →</button></div>
 <p><b id="weekLabel"></b></p>
 <div class="scroll"><table><thead><tr><th>Ημέρα</th><th>Ώρα</th><th>Τμήμα</th><th>Κατάσταση</th></tr></thead><tbody id="weeklyRows"></tbody></table></div>
-<h2>Καταχώριση μαθήματος</h2><form id="lessonForm" class="two"><label>Τμήμα<select name="group_id" id="lessonGroup" required></select></label><label>Ημερομηνία<input type="date" name="lesson_date" required></label><label>Ώρα έναρξης<input type="time" name="start_time"></label><label>Ώρα λήξης<input type="time" name="end_time"></label><label>Σημειώσεις<input name="notes" maxlength="500" placeholder="Τι διδάχθηκε"></label><button>Αποθήκευση μαθήματος</button></form><h2>Ιστορικό μαθημάτων</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ώρες</th><th>Σημειώσεις</th><th>Παρουσίες</th><th></th></tr></thead><tbody id="lessonRows"></tbody></table></div></div>
+<h2>Καταχώριση μαθήματος</h2><form id="lessonForm" class="two"><label>Τμήμα<select name="group_id" id="lessonGroup" required></select></label><label>Ημερομηνία<input type="date" name="lesson_date" required></label><label>Ώρα έναρξης<input type="time" name="start_time"></label><label>Ώρα λήξης<input type="time" name="end_time"></label><label>Σημειώσεις<input name="notes" maxlength="500" placeholder="Τι διδάχθηκε"></label><button>Αποθήκευση μαθήματος</button></form><h2>Ιστορικό μαθημάτων</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ώρες</th><th>Σημειώσεις</th><th>Κατάσταση</th><th>Παρουσίες</th><th></th></tr></thead><tbody id="lessonRows"></tbody></table></div></div>
 <div id="attendance" class="tab card hidden"><h2>Παρουσιολόγιο</h2>
 <p class="muted">Εμφανίζονται μόνο τα μαθήματα της τρέχουσας εβδομάδας (Δευτέρα–Κυριακή). Επίλεξε μάθημα για να καταχωρίσεις παρουσίες.</p>
 <label>Μάθημα / Ημερομηνία<select id="attendanceLessonSelect" style="width:100%;margin-top:8px"><option value="">Επίλεξε μάθημα</option></select></label>
@@ -221,7 +221,7 @@ async function openWeeklySchedule(){
   const [groups,schedules,existing]=await Promise.all([
    client.from('teaching_groups').select('id,name,subject_id').eq('user_id',user.id).eq('school_year_id',selectedYear),
    client.from('group_schedule').select('id,group_id,day_of_week,start_time,end_time').eq('user_id',user.id),
-   client.from('lessons').select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated')
+   client.from('lessons').select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated,lesson_status')
      .eq('user_id',user.id).eq('school_year_id',selectedYear).gte('lesson_date',start).lte('lesson_date',end)
   ]);
   for(const [label,r] of [['τμήματα',groups],['πρόγραμμα',schedules],['μαθήματα',existing]])
@@ -245,7 +245,7 @@ async function openWeeklySchedule(){
    const record={user_id:user.id,school_year_id:selectedYear,group_id:x.group.id,
     subject_id:x.group.subject_id,lesson_date:x.date,start_time:x.slot.start_time,
     end_time:x.slot.end_time,schedule_id:x.slot.id,is_auto_generated:true};
-   const {data,error}=await client.from('lessons').insert(record).select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated').single();
+   const {data,error}=await client.from('lessons').insert(record).select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated,lesson_status').single();
    if(error)throw Error('Δεν δημιουργήθηκε το μάθημα '+x.date+' ('+x.group.name+'): '+error.message);
    current.push(data);created++;
   }
@@ -255,7 +255,7 @@ async function openWeeklySchedule(){
    const dayName=days[Number(x.slot.day_of_week)%7];
    td(tr,dayName+' '+x.date.split('-').reverse().join('/'));
    td(tr,x.slot.start_time.slice(0,5)+'–'+x.slot.end_time.slice(0,5));
-   td(tr,x.group.name);td(tr,'Καταχωρισμένο');
+   td(tr,x.group.name);const matched=current.find(l=>l.schedule_id===x.slot.id&&l.lesson_date===x.date)||current.find(l=>l.group_id===x.group.id&&l.lesson_date===x.date&&(l.start_time||'').slice(0,5)===x.slot.start_time.slice(0,5));if(matched)appendLessonStatus(tr,matched);else td(tr,'—');
   }
   if(!expected.length){const tr=body.insertRow();const cell=tr.insertCell();cell.colSpan=4;cell.textContent='Δεν υπάρχουν προγραμματισμένα μαθήματα αυτή την εβδομάδα.'}
   if(created)await loadAssessments();
@@ -338,13 +338,29 @@ $('attendanceSave').onclick=async()=>{
 
 // Ημερολόγιο μαθημάτων και βαθμολογίες: χρησιμοποιούν τους υπάρχοντες πίνακες Supabase.
 function fillPick(id,rows,label){const el=$(id),old=el.value;el.replaceChildren();option(el,'','Επίλεξε');for(const r of rows)option(el,r.id,r[label]);if(rows.some(r=>r.id===old))el.value=old}
+const lessonStatusOptions=[['scheduled','Προγραμματισμένο'],['completed','Πραγματοποιήθηκε'],['cancelled','Δεν πραγματοποιήθηκε']];
+function appendLessonStatus(tr,lesson){
+ const cell=tr.insertCell(),select=document.createElement('select');select.style.minWidth='175px';
+ for(const [value,label] of lessonStatusOptions)option(select,value,label);
+ select.value=lesson.lesson_status||'scheduled';
+ select.onchange=async()=>{
+  const old=lesson.lesson_status||'scheduled',next=select.value;select.disabled=true;
+  const {error}=await client.from('lessons').update({lesson_status:next}).eq('id',lesson.id).eq('user_id',user.id);
+  select.disabled=false;
+  if(error){select.value=old;setStatus('Δεν ενημερώθηκε η κατάσταση: '+error.message,true);return}
+  lesson.lesson_status=next;
+  document.querySelectorAll('select[data-lesson-status="'+lesson.id+'"]').forEach(el=>{if(el!==select)el.value=next});
+  setStatus('Η κατάσταση του μαθήματος αποθηκεύτηκε.');
+ };
+ select.dataset.lessonStatus=lesson.id;cell.append(select);
+}
 function addDelete(row,table,id,after){const cell=row.insertCell(),b=document.createElement('button');b.className='danger smallbtn';b.textContent='Διαγραφή';b.onclick=async()=>{if(!confirm('Να διαγραφεί αυτή η εγγραφή;'))return;const {error}=await client.from(table).delete().eq('id',id).eq('user_id',user.id);if(error)setStatus(error.message,true);else{await after();setStatus('Η εγγραφή διαγράφηκε.')}};cell.append(b)}
 async function loadAssessments(){if(!user||unlockedUser!==user.id)return;const [st,su,tg,le,gr]=await Promise.all([client.from('students').select('id,full_name').order('full_name'),client.from('subjects').select('id,name').order('name'),yearFilter(client.from('teaching_groups').select('id,name,subject_id')).order('name'),yearFilter(client.from('lessons').select('*')).order('lesson_date',{ascending:false}),yearFilter(client.from('grades').select('*')).order('exam_date',{ascending:false})]);for(const r of [st,su,tg,le,gr])if(r.error)throw new Error('Σφάλμα ημερολογίου/βαθμών: '+r.error.message);fillPick('lessonGroup',tg.data,'name');fillPick('gradeSubject',su.data,'name');fillPick('gradeStudent',st.data,'full_name');const sname=id=>su.data.find(x=>x.id===id)?.name??'—',pname=id=>st.data.find(x=>x.id===id)?.full_name??'—';const attendancePicker=$('attendanceLessonSelect'),attendanceOld=attendancePicker.value;
  attendancePicker.replaceChildren();option(attendancePicker,'','Επίλεξε μάθημα');
  const currentWeek=weekDates(0);$('attendancePanel').classList.add('hidden');attendanceLesson=null;
  for(const l of le.data.filter(x=>x.group_id&&x.lesson_date>=currentWeek[0]&&x.lesson_date<=currentWeek[6]))option(attendancePicker,l.id,l.lesson_date+' · '+(tg.data.find(x=>x.id===l.group_id)?.name||'Τμήμα')+' · '+[l.start_time?.slice(0,5),l.end_time?.slice(0,5)].filter(Boolean).join('–'));
  if([...attendancePicker.options].some(o=>o.value===attendanceOld))attendancePicker.value=attendanceOld;
- $('lessonRows').replaceChildren();for(const l of le.data){const tr=$('lessonRows').insertRow();for(const v of [l.lesson_date,(tg.data.find(x=>x.id===l.group_id)?.name||'Παλιά εγγραφή: '+sname(l.subject_id)),[l.start_time?.slice(0,5),l.end_time?.slice(0,5)].filter(Boolean).join('–'),l.notes||''])td(tr,v);const ac=tr.insertCell(),ab=document.createElement('button');ab.type='button';ab.className='secondary smallbtn';ab.textContent='Παρουσίες';ab.onclick=()=>showAttendance(l,tg.data.find(x=>x.id===l.group_id)?.name||'Τμήμα');ac.append(ab);addDelete(tr,'lessons',l.id,loadAssessments)}$('gradeRows').replaceChildren();for(const g of gr.data){const tr=$('gradeRows').insertRow();for(const v of [g.exam_date,pname(g.student_id),sname(g.subject_id),g.exam_title,g.grade])td(tr,v);addDelete(tr,'grades',g.id,loadAssessments)}}
+ $('lessonRows').replaceChildren();for(const l of le.data){const tr=$('lessonRows').insertRow();for(const v of [l.lesson_date,(tg.data.find(x=>x.id===l.group_id)?.name||'Παλιά εγγραφή: '+sname(l.subject_id)),[l.start_time?.slice(0,5),l.end_time?.slice(0,5)].filter(Boolean).join('–'),l.notes||''])td(tr,v);appendLessonStatus(tr,l);const ac=tr.insertCell(),ab=document.createElement('button');ab.type='button';ab.className='secondary smallbtn';ab.textContent='Παρουσίες';ab.onclick=()=>showAttendance(l,tg.data.find(x=>x.id===l.group_id)?.name||'Τμήμα');ac.append(ab);addDelete(tr,'lessons',l.id,loadAssessments)}$('gradeRows').replaceChildren();for(const g of gr.data){const tr=$('gradeRows').insertRow();for(const v of [g.exam_date,pname(g.student_id),sname(g.subject_id),g.exam_title,g.grade])td(tr,v);addDelete(tr,'grades',g.id,loadAssessments)}}
 $('lessonForm').addEventListener('submit',async e=>{e.preventDefault();if(!user||unlockedUser!==user.id)return;const f=new FormData(e.currentTarget),start=f.get('start_time'),end=f.get('end_time');if(start&&end&&end<=start)return setStatus('Η ώρα λήξης πρέπει να είναι μετά την έναρξη.',true);const groupId=f.get('group_id');const {data:group,error:groupError}=await client.from('teaching_groups').select('id,subject_id').eq('id',groupId).eq('user_id',user.id).single();if(groupError||!group?.subject_id)return setStatus('Δεν βρέθηκε το τμήμα ή το μάθημά του.',true);const record={user_id:user.id,group_id:group.id,subject_id:group.subject_id,lesson_date:f.get('lesson_date'),start_time:start||null,end_time:end||null,notes:String(f.get('notes')||'').trim()||null,school_year_id:selectedYear||null};const {error}=await client.from('lessons').insert(record);if(error)setStatus(error.message,true);else{e.currentTarget.reset();if(await syncAfterWrite())setStatus('Το μάθημα αποθηκεύτηκε.')}});
 $('gradeForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!user||unlockedUser!==user.id)return;
