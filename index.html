@@ -53,7 +53,47 @@ function syncAfterWrite(){
  syncSerial=job.catch(()=>{});
  return job.then(()=>true).catch(e=>{setStatus('Η αποθήκευση ολοκληρώθηκε, αλλά η λίστα δεν ανανεώθηκε: '+e.message,true);return false});
 }
-for(const [form,table,fields] of [['studentForm','students',['full_name','school_grade','phone']],['subjectForm','subjects',['name','hourly_rate']]]){$(form).addEventListener('submit',async e=>{e.preventDefault();if(!user)return;const fd=new FormData(e.currentTarget),record={user_id:user.id};for(const field of fields)record[field]=field==='hourly_rate'?Number(fd.get(field)):String(fd.get(field)??'').trim()||null;const {error}=await client.from(table).insert(record);if(error)setStatus(error.message,true);else{e.currentTarget.reset();if(await syncAfterWrite())setStatus('Αποθηκεύτηκε επιτυχώς.')}})}
+// Ανεξάρτητη ενημέρωση μαθητών/μαθημάτων μετά από επιτυχημένο INSERT.
+// Δεν εξαρτάται από τυχόν σφάλματα φόρτωσης τμημάτων ή βαθμολογιών.
+for(const [form,table,fields,bodyId] of [
+ ['studentForm','students',['full_name','school_grade','phone'],'studentRows'],
+ ['subjectForm','subjects',['name','hourly_rate'],'subjectRows']
+]){
+ $(form).addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!user||unlockedUser!==user.id)return setStatus('Συνδέσου ξανά.',true);
+  const el=e.currentTarget,btn=el.querySelector('button[type=submit],button:not([type])');
+  if(btn?.disabled)return;
+  const fd=new FormData(el),record={user_id:user.id};
+  for(const field of fields)record[field]=field==='hourly_rate'?Number(fd.get(field)):String(fd.get(field)??'').trim()||null;
+  if(btn)btn.disabled=true;
+  try{
+   const {data,error}=await client.from(table).insert(record).select('*').single();
+   if(error)throw error;
+   // Προβάλλουμε αμέσως την εγγραφή που επέστρεψε το Supabase.
+   const body=$(bodyId),tr=body.insertRow(0);
+   for(const field of fields)td(tr,field==='hourly_rate'?Number(data[field]||0).toFixed(2)+' €':data[field]);
+   const action=tr.insertCell(),del=document.createElement('button');
+   del.textContent='Διαγραφή';del.className='danger';
+   del.onclick=async()=>{
+    if(!confirm('Να διαγραφεί η εγγραφή;'))return;
+    const {error:de}=await client.from(table).delete().eq('id',data.id).eq('user_id',user.id);
+    if(de)return setStatus(de.message,true);
+    tr.remove();$(table==='students'?'studentCount':'subjectCount').textContent=body.rows.length;
+    setStatus('Η εγγραφή διαγράφηκε.');
+   };
+   action.append(del);
+   $(table==='students'?'studentCount':'subjectCount').textContent=body.rows.length;
+   el.reset();setStatus('Αποθηκεύτηκε και εμφανίστηκε αμέσως.');
+   // Ενημέρωση άλλων επιλογών χωρίς να μπλοκάρεται η λίστα μαθητών.
+   Promise.allSettled([loadGroups(),loadAssessments()]).then(results=>{
+    const errors=results.filter(r=>r.status==='rejected');
+    if(errors.length)console.warn('EduMilo: secondary list refresh',errors);
+   });
+  }catch(err){setStatus('Η αποθήκευση απέτυχε: '+(err?.message||err),true)}
+  finally{if(btn)btn.disabled=false}
+ });
+}
 
 const days=['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
 let allStudents=[],allSubjects=[];
