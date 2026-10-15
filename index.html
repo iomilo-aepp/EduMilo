@@ -11,7 +11,13 @@
 <div id="students" class="tab card hidden"><h2>Νέος μαθητής</h2><form id="studentForm" class="two"><label>Ονοματεπώνυμο<input name="full_name" required maxlength="150"></label><label>Τάξη<input name="school_grade" placeholder="π.χ. Γ' Λυκείου" maxlength="60"></label><label>Τηλέφωνο<input name="phone" maxlength="40"></label><button>Προσθήκη μαθητή</button></form><h2>Μαθητές</h2><div class="scroll"><table><thead><tr><th>Ονοματεπώνυμο</th><th>Τάξη</th><th>Τηλέφωνο</th><th></th></tr></thead><tbody id="studentRows"></tbody></table></div></div>
 <div id="subjects" class="tab card hidden"><h2>Νέο μάθημα</h2><form id="subjectForm" class="two"><label>Όνομα μαθήματος<input name="name" required maxlength="150" placeholder="π.χ. Πληροφορική"></label><label>Χρέωση ανά ώρα (€)<input name="hourly_rate" type="number" min="0" step="0.01" value="0" required></label><button>Προσθήκη μαθήματος</button></form><h2>Μαθήματα</h2><div class="scroll"><table><thead><tr><th>Μάθημα</th><th>Χρέωση</th><th></th></tr></thead><tbody id="subjectRows"></tbody></table></div></div>
 <div id="groups" class="tab card hidden"><h2>Νέο τμήμα / ιδιαίτερο</h2><form id="groupForm" class="two"><label>Όνομα<input name="name" required maxlength="120" placeholder="π.χ. Γ1 ή Ιδιαίτερο Μαρία"></label><label>Τύπος<select name="teaching_type"><option value="group">Ομαδικό τμήμα</option><option value="private">Ιδιαίτερο (1 μαθητής)</option></select></label><label>Μάθημα<select id="groupSubject" name="subject_id" required></select></label><label>Ημέρα<select name="day_of_week"><option value="">Χωρίς σταθερή ημέρα</option><option value="1">Δευτέρα</option><option value="2">Τρίτη</option><option value="3">Τετάρτη</option><option value="4">Πέμπτη</option><option value="5">Παρασκευή</option><option value="6">Σάββατο</option><option value="0">Κυριακή</option></select></label><label>Από<input name="start_time" type="time"></label><label>Έως<input name="end_time" type="time"></label><label>Ωριαία χρέωση (€)<input name="hourly_rate" type="number" min="0" step="0.01" value="0"></label><label>Μηνιαία δίδακτρα (€)<input name="monthly_fee" type="number" min="0" step="0.01" value="0"></label><button>Δημιουργία</button></form><p class="muted">Μπορείς να προσθέσεις επιπλέον ημέρες και ώρες σε κάθε τμήμα παρακάτω.</p><h2>Τα τμήματά μου</h2><p class="muted">Επίλεξε μαθητές για κάθε τμήμα. Σε ιδιαίτερο επιτρέπεται μόνο ένας μαθητής. Το κουμπί «+ Προσθήκη ημέρας / ώρας» εμφανίζεται μέσα στην κάρτα κάθε υπάρχοντος τμήματος, πιο κάτω.</p><div id="groupCards"></div></div>
-<div id="sessions" class="tab card hidden"><h2>Καταχώριση μαθήματος</h2><form id="lessonForm" class="two"><label>Τμήμα<select name="group_id" id="lessonGroup" required></select></label><label>Ημερομηνία<input type="date" name="lesson_date" required></label><label>Ώρα έναρξης<input type="time" name="start_time"></label><label>Ώρα λήξης<input type="time" name="end_time"></label><label>Σημειώσεις<input name="notes" maxlength="500" placeholder="Τι διδάχθηκε"></label><button>Αποθήκευση μαθήματος</button></form><h2>Ιστορικό μαθημάτων</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ώρες</th><th>Σημειώσεις</th><th></th></tr></thead><tbody id="lessonRows"></tbody></table></div></div>
+<div id="sessions" class="tab card hidden">
+<h2>Αυτόματο εβδομαδιαίο πρόγραμμα</h2>
+<p class="muted">Τα μαθήματα της επιλεγμένης εβδομάδας δημιουργούνται από τις ημέρες και ώρες των τμημάτων. Δεν δημιουργούνται ξανά εφόσον υπάρχουν.</p>
+<div class="group-actions"><button type="button" id="prevWeek" class="secondary">← Προηγούμενη</button><button type="button" id="thisWeek" class="secondary">Τρέχουσα εβδομάδα</button><button type="button" id="nextWeek" class="secondary">Επόμενη →</button></div>
+<p><b id="weekLabel"></b></p>
+<div class="scroll"><table><thead><tr><th>Ημέρα</th><th>Ώρα</th><th>Τμήμα</th><th>Κατάσταση</th></tr></thead><tbody id="weeklyRows"></tbody></table></div>
+<h2>Καταχώριση μαθήματος</h2><form id="lessonForm" class="two"><label>Τμήμα<select name="group_id" id="lessonGroup" required></select></label><label>Ημερομηνία<input type="date" name="lesson_date" required></label><label>Ώρα έναρξης<input type="time" name="start_time"></label><label>Ώρα λήξης<input type="time" name="end_time"></label><label>Σημειώσεις<input name="notes" maxlength="500" placeholder="Τι διδάχθηκε"></label><button>Αποθήκευση μαθήματος</button></form><h2>Ιστορικό μαθημάτων</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ώρες</th><th>Σημειώσεις</th><th></th></tr></thead><tbody id="lessonRows"></tbody></table></div></div>
 <div id="marks" class="tab card hidden"><h2>Βαθμός τεστ / διαγωνίσματος</h2><form id="gradeForm" class="two"><label>Μαθητής<select name="student_id" id="gradeStudent" required></select></label><label>Μάθημα<select name="subject_id" id="gradeSubject" required></select></label><label>Τύπος αξιολόγησης<select id="gradeType"><option>Τεστ</option><option>Διαγώνισμα</option></select></label><label>Τίτλος<input name="exam_title" id="gradeTitle" required maxlength="150" placeholder="π.χ. Δομές επανάληψης"></label><label>Ημερομηνία<input type="date" name="exam_date" required></label><label>Βαθμός (0–20)<input type="number" name="grade" min="0" max="20" step="0.01" required></label><button>Αποθήκευση βαθμού</button></form><h2>Ιστορικό βαθμών</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Μαθητής</th><th>Μάθημα</th><th>Αξιολόγηση</th><th>Βαθμός</th><th></th></tr></thead><tbody id="gradeRows"></tbody></table></div></div>
 <div id="backup" class="tab card hidden"><h2>Αντίγραφα ασφαλείας</h2><p>Το αντίγραφο περιέχει <b>όλες τις σχολικές χρονιές</b> και τα δεδομένα του λογαριασμού σου. Το αρχείο περιέχει προσωπικά δεδομένα μαθητών: φύλαξέ το σε ασφαλές μέρος.</p><p><button id="backupDownload">Λήψη πλήρους backup (.json)</button></p><hr><h2>Επαναφορά backup</h2><p class="muted">Για ασφάλεια η επαναφορά επιτρέπεται μόνο όταν οι πίνακες δεδομένων είναι άδειοι. Πρώτα κατέβασε backup και έλεγξε το αρχείο. Η επαναφορά δεν είναι ατομική: σε περίπτωση σφάλματος μπορεί να χρειαστεί διόρθωση.</p><label>Επιλογή αρχείου JSON<input id="backupFile" type="file" accept=".json,application/json"></label><p><button id="backupRestore" class="secondary">Επαναφορά από αρχείο</button></p><hr><h2>Διαγραφή όλων των δεδομένων</h2><p class="error">Προσοχή: διαγράφονται οριστικά οι εγγραφές όλων των σχολικών ετών. Ο λογαριασμός Supabase και το PIN δεν διαγράφονται.</p><p><button id="backupDelete" class="danger">Διαγραφή όλων των δεδομένων</button></p></div>
 </section></main>
@@ -28,12 +34,12 @@ function pinSaved(){try{const d=JSON.parse(localStorage.getItem(pinKey()));retur
 function pinScreen(changing=false){pinChanging=changing;const saved=pinSaved();$('pinTitle').textContent=changing?'Αλλαγή PIN':saved?'Ξεκλείδωμα EduMilo':'Δημιουργία PIN';$('pinHint').textContent=changing?'Διάλεξε νέο τετραψήφιο PIN.':saved?'Πληκτρολόγησε το PIN για πρόσβαση στην εφαρμογή.':'Όρισε PIN 4 ψηφίων για τις επόμενες εισόδους.';$('pinConfirmWrap').classList.toggle('hidden',!!saved&&!changing);$('pinConfirm').required=!saved||changing;$('pinSubmit').textContent=saved&&!changing?'Ξεκλείδωμα':'Αποθήκευση PIN';$('pinForm').reset();show('pin')}
 function sessionChanged(session){const next=session?.user??null;if(!next){user=null;unlockedUser=null;yearReady=false;selectedYear='';pinFailures=0;show('auth');return}if(user?.id!==next.id){unlockedUser=null;yearReady=false;selectedYear='';pinFailures=0}user=next;$('identity').textContent=user.email??'';if(unlockedUser===user.id){show('app');return}pinScreen()}
 function connect(){const url=localStorage.getItem('edumilo_url'),key=localStorage.getItem('edumilo_key');if(!url||!key){show('config');return}try{client=createClient(url,key);client.auth.onAuthStateChange((_event,session)=>sessionChanged(session));client.auth.getSession().then(({data,error})=>{if(error)throw error;sessionChanged(data.session)}).catch(e=>{show('auth');setStatus(e.message,true)})}catch(e){show('config');setStatus('Μη έγκυρα στοιχεία Supabase: '+e.message,true)}}
-$('pinForm').addEventListener('submit',async e=>{e.preventDefault();if(!user)return;const pin=$('pinInput').value;if(!/^[0-9]{4}$/.test(pin))return setStatus('Το PIN πρέπει να έχει ακριβώς 4 ψηφία.',true);const saved=pinSaved();$('pinSubmit').disabled=true;try{if(saved&&!pinChanging){const hash=await pinHash(pin,saved.salt);if(hash!==saved.hash){pinFailures++;$('pinInput').value='';if(pinFailures>=5){pinFailures=0;unlockedUser=null;await client.auth.signOut();setStatus('5 λανθασμένες προσπάθειες. Συνδέσου ξανά με email και κωδικό.',true)}else setStatus('Λάθος PIN. Απομένουν '+(5-pinFailures)+' προσπάθειες.',true);return}pinFailures=0}else{if(pin!==$('pinConfirm').value)return setStatus('Τα δύο PIN δεν ταιριάζουν.',true);const salt=bytesToHex(crypto.getRandomValues(new Uint8Array(16)));localStorage.setItem(pinKey(),JSON.stringify({salt,hash:await pinHash(pin,salt)}))}unlockedUser=user.id;show('app');setStatus(pinChanging?'Το PIN άλλαξε.':'Το EduMilo ξεκλειδώθηκε.');pinChanging=false;await initializeYears();refresh()}catch(err){setStatus('Σφάλμα PIN: '+err.message,true)}finally{$('pinSubmit').disabled=false}});
+$('pinForm').addEventListener('submit',async e=>{e.preventDefault();if(!user)return;const pin=$('pinInput').value;if(!/^[0-9]{4}$/.test(pin))return setStatus('Το PIN πρέπει να έχει ακριβώς 4 ψηφία.',true);const saved=pinSaved();$('pinSubmit').disabled=true;try{if(saved&&!pinChanging){const hash=await pinHash(pin,saved.salt);if(hash!==saved.hash){pinFailures++;$('pinInput').value='';if(pinFailures>=5){pinFailures=0;unlockedUser=null;await client.auth.signOut();setStatus('5 λανθασμένες προσπάθειες. Συνδέσου ξανά με email και κωδικό.',true)}else setStatus('Λάθος PIN. Απομένουν '+(5-pinFailures)+' προσπάθειες.',true);return}pinFailures=0}else{if(pin!==$('pinConfirm').value)return setStatus('Τα δύο PIN δεν ταιριάζουν.',true);const salt=bytesToHex(crypto.getRandomValues(new Uint8Array(16)));localStorage.setItem(pinKey(),JSON.stringify({salt,hash:await pinHash(pin,salt)}))}unlockedUser=user.id;show('app');setStatus(pinChanging?'Το PIN άλλαξε.':'Το EduMilo ξεκλειδώθηκε.');pinChanging=false;await initializeYears();await refresh()}catch(err){setStatus('Σφάλμα PIN: '+err.message,true)}finally{$('pinSubmit').disabled=false}});
 $('pinEmail').onclick=async()=>{unlockedUser=null;await client.auth.signOut();setStatus('Συνδέσου με email και κωδικό. Αν ξέχασες το PIN, η επαναφορά απαιτεί επιβεβαίωση ταυτότητας.',false)};
 $('changePin').onclick=()=>pinScreen(true);
 $('configForm').addEventListener('submit',e=>{e.preventDefault();let url=$('url').value.trim().replace(/\/$/,'');let key=$('key').value.trim();if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url)||!key.startsWith('sb_publishable_')&&!key.startsWith('eyJ')){setStatus('Έλεγξε το Project URL και το δημόσιο key.',true);return}localStorage.setItem('edumilo_url',url);localStorage.setItem('edumilo_key',key);setStatus('Αποθηκεύτηκαν οι ρυθμίσεις.');connect()});
 $('changeConfig').onclick=()=>{localStorage.removeItem('edumilo_url');localStorage.removeItem('edumilo_key');location.reload()};$('loginForm').addEventListener('submit',async e=>{e.preventDefault();setStatus('Σύνδεση...');const {error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});setStatus(error?error.message:'Συνδέθηκες.',!!error)});$('logout').onclick=async()=>{unlockedUser=null;await client.auth.signOut();setStatus('Αποσυνδέθηκες.')};
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab))});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('hidden',x.id!==b.dataset.tab));if(b.dataset.tab==='sessions')openWeeklySchedule();});
 const td=(tr,value)=>{let cell=tr.insertCell();cell.textContent=value??'';return cell};async function load(table,bodyId,fields){const {data,error}=await client.from(table).select('*').order('created_at',{ascending:false});if(error){throw new Error('Σφάλμα '+table+': '+error.message)}const body=$(bodyId);body.replaceChildren();for(const item of data){const tr=body.insertRow();for(const field of fields)td(tr,field==='hourly_rate'?Number(item[field]).toFixed(2)+' €':item[field]);const action=tr.insertCell();const button=document.createElement('button');button.textContent='Διαγραφή';button.className='danger';button.onclick=async()=>{if(!confirm('Να διαγραφεί η εγγραφή;'))return;const {error}=await client.from(table).delete().eq('id',item.id).eq('user_id',user.id);if(error)setStatus(error.message,true);else{await refresh();setStatus('Η εγγραφή διαγράφηκε.')}};action.append(button)}$(table==='students'?'studentCount':'subjectCount').textContent=data.length}
 async function refresh(){
  if(!user||unlockedUser!==user.id)throw Error('Η συνεδρία δεν είναι ξεκλείδωτη.');
@@ -179,7 +185,7 @@ async function initializeYears(){
 $('schoolYearSelect').addEventListener('change',async e=>{
  selectedYear=e.target.value;
  if(user)localStorage.setItem('edumilo_year_'+user.id,selectedYear);
- await refresh();setStatus('Εμφανίζονται τα στοιχεία του επιλεγμένου σχολικού έτους.');
+ await refresh();if(!$('sessions').classList.contains('hidden'))await openWeeklySchedule();setStatus('Εμφανίζονται τα στοιχεία του επιλεγμένου σχολικού έτους.');
 });
 $('yearForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!user||unlockedUser!==user.id)return;
@@ -190,6 +196,71 @@ $('yearForm').addEventListener('submit',async e=>{
  localStorage.setItem('edumilo_year_'+user.id,data.id);$('yearForm').reset();
  await initializeYears();await refresh();setStatus('Το σχολικό έτος δημιουργήθηκε και επιλέχθηκε.');
 });
+
+
+// Δημιουργία μαθημάτων όταν προβάλλεται μια εβδομάδα. Χωρίς background jobs.
+let weekOffset=0, weeklyBusy=false;
+function mondayOfWeek(offset=0){
+ const d=new Date();d.setHours(12,0,0,0);
+ const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day+offset*7);return d;
+}
+function isoLocal(d){return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')}
+function weekDates(offset){const start=mondayOfWeek(offset);return Array.from({length:7},(_,i)=>{const d=new Date(start);d.setDate(start.getDate()+i);return isoLocal(d)})}
+async function openWeeklySchedule(){
+ if(weeklyBusy||!yearReady||!selectedYear||!user||unlockedUser!==user.id)return;
+ weeklyBusy=true;
+ const nav=['prevWeek','thisWeek','nextWeek'];nav.forEach(id=>$(id).disabled=true);
+ try{
+  const dates=weekDates(weekOffset),start=dates[0],end=dates[6];
+  $('weekLabel').textContent=start.split('-').reverse().join('/')+' – '+end.split('-').reverse().join('/');
+  const [groups,schedules,existing]=await Promise.all([
+   client.from('teaching_groups').select('id,name,subject_id').eq('user_id',user.id).eq('school_year_id',selectedYear),
+   client.from('group_schedule').select('id,group_id,day_of_week,start_time,end_time').eq('user_id',user.id),
+   client.from('lessons').select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated')
+     .eq('user_id',user.id).eq('school_year_id',selectedYear).gte('lesson_date',start).lte('lesson_date',end)
+  ]);
+  for(const [label,r] of [['τμήματα',groups],['πρόγραμμα',schedules],['μαθήματα',existing]])
+   if(r.error)throw Error('Αδυναμία φόρτωσης '+label+': '+r.error.message);
+  const byGroup=new Map(groups.data.map(g=>[g.id,g]));
+  const expected=[];
+  for(const slot of schedules.data){
+   const group=byGroup.get(slot.group_id);if(!group||!group.subject_id)continue;
+   const day=Number(slot.day_of_week);if(day<1||day>7)continue;
+   const date=dates[day-1];
+   expected.push({group,slot,date});
+  }
+  expected.sort((a,b)=>a.date.localeCompare(b.date)||a.slot.start_time.localeCompare(b.slot.start_time));
+  const current=[...existing.data];
+  let created=0;
+  for(const x of expected){
+   const same=current.find(l=>l.schedule_id===x.slot.id&&l.lesson_date===x.date)
+    ||current.find(l=>l.group_id===x.group.id&&l.lesson_date===x.date
+       &&(l.start_time||'').slice(0,5)===x.slot.start_time.slice(0,5));
+   if(same)continue;
+   const record={user_id:user.id,school_year_id:selectedYear,group_id:x.group.id,
+    subject_id:x.group.subject_id,lesson_date:x.date,start_time:x.slot.start_time,
+    end_time:x.slot.end_time,schedule_id:x.slot.id,is_auto_generated:true};
+   const {data,error}=await client.from('lessons').insert(record).select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated').single();
+   if(error)throw Error('Δεν δημιουργήθηκε το μάθημα '+x.date+' ('+x.group.name+'): '+error.message);
+   current.push(data);created++;
+  }
+  const body=$('weeklyRows');body.replaceChildren();
+  for(const x of expected){
+   const tr=body.insertRow();
+   const dayName=days[Number(x.slot.day_of_week)%7];
+   td(tr,dayName+' '+x.date.split('-').reverse().join('/'));
+   td(tr,x.slot.start_time.slice(0,5)+'–'+x.slot.end_time.slice(0,5));
+   td(tr,x.group.name);td(tr,'Καταχωρισμένο');
+  }
+  if(!expected.length){const tr=body.insertRow();const cell=tr.insertCell();cell.colSpan=4;cell.textContent='Δεν υπάρχουν προγραμματισμένα μαθήματα αυτή την εβδομάδα.'}
+  if(created)await loadAssessments();
+  setStatus(created?'Δημιουργήθηκαν '+created+' μαθήματα για την εβδομάδα.':'Το εβδομαδιαίο πρόγραμμα είναι ενημερωμένο.');
+ }catch(e){setStatus('Σφάλμα αυτόματου προγράμματος: '+e.message,true)}
+ finally{weeklyBusy=false;nav.forEach(id=>$(id).disabled=false)}
+}
+$('prevWeek').onclick=()=>{weekOffset--;openWeeklySchedule()};
+$('nextWeek').onclick=()=>{weekOffset++;openWeeklySchedule()};
+$('thisWeek').onclick=()=>{weekOffset=0;openWeeklySchedule()};
 
 // Ημερολόγιο μαθημάτων και βαθμολογίες: χρησιμοποιούν τους υπάρχοντες πίνακες Supabase.
 function fillPick(id,rows,label){const el=$(id),old=el.value;el.replaceChildren();option(el,'','Επίλεξε');for(const r of rows)option(el,r.id,r[label]);if(rows.some(r=>r.id===old))el.value=old}
