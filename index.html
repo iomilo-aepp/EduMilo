@@ -29,7 +29,7 @@
 <div class="two" style="display:grid;gap:12px"><label>Μήνας<input id="financeMonth" type="month"></label><label>Τμήμα<select id="financeGroup"><option value="">Όλα τα τμήματα</option></select></label></div>
 <p id="financeSummary" class="muted"></p>
 <div class="scroll"><table><thead><tr><th>Τμήμα</th><th>Ώρες</th><th>€/ώρα</th><th>Χρέωση</th><th>Πληρωμές</th><th>Υπόλοιπο μήνα</th></tr></thead><tbody id="financeRows"></tbody></table></div>
-<h2>Νέα πληρωμή</h2><form id="financePaymentForm" class="two"><label>Τμήμα<select name="group_id" id="financePaymentGroup" required></select></label><label>Ημερομηνία<input name="payment_date" type="date" required></label><label>Ποσό (€)<input name="amount" type="number" min="0.01" step="0.01" required></label><button type="submit">Αποθήκευση πληρωμής</button></form>
+<h2 id="financePaymentTitle">Νέα πληρωμή</h2><form id="financePaymentForm" class="two"><label>Τμήμα<select name="group_id" id="financePaymentGroup" required></select></label><label>Ημερομηνία<input name="payment_date" type="date" required></label><label>Ποσό (€)<input name="amount" type="number" min="0.01" step="0.01" required></label><button id="financePaymentSubmit" type="submit">Αποθήκευση πληρωμής</button><button id="financePaymentCancel" type="button" style="display:none">Ακύρωση επεξεργασίας</button></form>
 <h2>Πληρωμές επιλεγμένου μήνα</h2><div class="scroll"><table><thead><tr><th>Ημερομηνία</th><th>Τμήμα</th><th>Ποσό</th><th></th></tr></thead><tbody id="financePaymentRows"></tbody></table></div>
 <hr><h2>Ετήσια οικονομική αναφορά (Σεπτέμβριος–Αύγουστος)</h2>
 <p class="muted">Για το επιλεγμένο σχολικό έτος. Υπολογίζεται αυτόματα από τα πραγματοποιημένα μαθήματα και τις πληρωμές. Η αναφορά αφορά όλα τα τμήματα του σχολικού έτους.</p>
@@ -556,6 +556,9 @@ $('annualExport').onclick=()=>{
 // Οικονομικά: πραγματικές ώρες ανά τμήμα και πολλαπλές πληρωμές ανά μήνα.
 const eur=n=>Number(n||0).toLocaleString('el-GR',{style:'currency',currency:'EUR'});
 let financeLoading=false;
+let editingPaymentId=null;
+function resetPaymentEditor(){editingPaymentId=null;const f=$('financePaymentForm');f.reset();$('financePaymentTitle').textContent='Νέα πληρωμή';$('financePaymentSubmit').textContent='Αποθήκευση πληρωμής';$('financePaymentCancel').style.display='none';}
+$('financePaymentCancel').onclick=resetPaymentEditor;
 function financeMonthValue(){return $('financeMonth').value||isoLocal(new Date()).slice(0,7)}
 function financeDuration(l){
  if(!l.start_time||!l.end_time)return 0;
@@ -605,12 +608,25 @@ async function loadFinances(){
   for(const p of shown){
    const tr=payBody.insertRow();
    for(const v of [p.payment_date,groups.data.find(g=>g.id===p.group_id)?.name||'—',eur(p.amount)])td(tr,v);
-   const cell=tr.insertCell(),b=document.createElement('button');b.type='button';b.className='danger smallbtn';b.textContent='Διαγραφή';
+   const cell=tr.insertCell(),edit=document.createElement('button');edit.type='button';edit.className='smallbtn';edit.textContent='Επεξεργασία';
+   edit.onclick=()=>{
+    editingPaymentId=p.id;
+    const f=$('financePaymentForm');f.elements.namedItem('group_id').value=p.group_id;
+    f.elements.namedItem('payment_date').value=p.payment_date;
+    f.elements.namedItem('amount').value=p.amount;
+    $('financePaymentTitle').textContent='Επεξεργασία πληρωμής';
+    $('financePaymentSubmit').textContent='Αποθήκευση αλλαγών';
+    $('financePaymentCancel').style.display='';
+    f.scrollIntoView({behavior:'smooth',block:'center'});
+   };
+   cell.append(edit,document.createTextNode(' '));
+   const b=document.createElement('button');b.type='button';b.className='danger smallbtn';b.textContent='Διαγραφή';
    b.onclick=async()=>{
     if(!confirm('Να διαγραφεί αυτή η πληρωμή;'))return;
     b.disabled=true;
     const {error}=await client.from('payments').delete().eq('id',p.id).eq('user_id',user.id);
     if(error){b.disabled=false;return setStatus('Σφάλμα διαγραφής: '+error.message,true)}
+    if(editingPaymentId===p.id)resetPaymentEditor();
     await loadFinances();await loadAnnualFinances();setStatus('Η πληρωμή διαγράφηκε.');
    };
    cell.append(b);
@@ -627,9 +643,14 @@ $('financePaymentForm').addEventListener('submit',async e=>{
  if(!group_id||!payment_date||!Number.isFinite(amount)||amount<=0)return setStatus('Συμπλήρωσε τμήμα, ημερομηνία και θετικό ποσό.',true);
  btn.disabled=true;
  try{
-  const {error}=await client.from('payments').insert({user_id:user.id,group_id,payment_date,amount});
+  const wasEditing=Boolean(editingPaymentId);
+  const query=wasEditing
+   ?client.from('payments').update({group_id,payment_date,amount}).eq('id',editingPaymentId).eq('user_id',user.id).select('id')
+   :client.from('payments').insert({user_id:user.id,group_id,payment_date,amount}).select('id');
+  const {data,error}=await query;
   if(error)throw error;
-  form.reset();await loadFinances();await loadAnnualFinances();setStatus('Η πληρωμή αποθηκεύτηκε.');
+  if(!data?.length)throw Error('Δεν βρέθηκε πληρωμή για ενημέρωση.');
+  resetPaymentEditor();await loadFinances();await loadAnnualFinances();setStatus(wasEditing?'Η πληρωμή ενημερώθηκε.':'Η πληρωμή αποθηκεύτηκε.');
  }catch(err){setStatus('Δεν αποθηκεύτηκε η πληρωμή: '+err.message,true)}
  finally{btn.disabled=false}
 });
