@@ -246,7 +246,7 @@ async function openWeeklySchedule(){
   const [groups,schedules,existing]=await Promise.all([
    client.from('teaching_groups').select('id,name,subject_id').eq('user_id',user.id).eq('school_year_id',selectedYear),
    client.from('group_schedule').select('id,group_id,day_of_week,start_time,end_time').eq('user_id',user.id),
-   client.from('lessons').select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated,lesson_status')
+   client.from('lessons').select('id,group_id,subject_id,lesson_date,start_time,end_time,schedule_id,is_auto_generated,lesson_status,notes')
      .eq('user_id',user.id).eq('school_year_id',selectedYear).gte('lesson_date',start).lte('lesson_date',end)
   ]);
   for(const [label,r] of [['τμήματα',groups],['πρόγραμμα',schedules],['μαθήματα',existing]])
@@ -282,7 +282,15 @@ async function openWeeklySchedule(){
    td(tr,x.slot.start_time.slice(0,5)+'–'+x.slot.end_time.slice(0,5));
    td(tr,x.group.name);const matched=current.find(l=>l.schedule_id===x.slot.id&&l.lesson_date===x.date)||current.find(l=>l.group_id===x.group.id&&l.lesson_date===x.date&&(l.start_time||'').slice(0,5)===x.slot.start_time.slice(0,5));if(matched)appendLessonStatus(tr,matched);else td(tr,'—');
   }
-  if(!expected.length){const tr=body.insertRow();const cell=tr.insertCell();cell.colSpan=4;cell.textContent='Δεν υπάρχουν προγραμματισμένα μαθήματα αυτή την εβδομάδα.'}
+  // Χειροκίνητες αναπληρώσεις της εβδομάδας, πέρα από το σταθερό πρόγραμμα.
+  const makeups=current.filter(l=>(l.notes||'').includes('[ΑΝΑΠΛΗΡΩΣΗ:'));
+  for(const l of makeups){
+   const tr=body.insertRow(),g=byGroup.get(l.group_id);
+   td(tr,'Αναπλήρωση · '+l.lesson_date.split('-').reverse().join('/'));
+   td(tr,[l.start_time?.slice(0,5),l.end_time?.slice(0,5)].filter(Boolean).join('–'));
+   td(tr,g?.name||'Τμήμα');appendLessonStatus(tr,l);
+  }
+  if(!expected.length&&!makeups.length){const tr=body.insertRow();const cell=tr.insertCell();cell.colSpan=4;cell.textContent='Δεν υπάρχουν προγραμματισμένα μαθήματα αυτή την εβδομάδα.'}
   if(created)await loadAssessments();
   setStatus(created?'Δημιουργήθηκαν '+created+' μαθήματα για την εβδομάδα.':'Το εβδομαδιαίο πρόγραμμα είναι ενημερωμένο.');
  }catch(e){setStatus('Σφάλμα αυτόματου προγράμματος: '+e.message,true)}
@@ -380,6 +388,37 @@ function appendLessonStatus(tr,lesson){
  select.dataset.lessonStatus=lesson.id;cell.append(select);
 }
 function addDelete(row,table,id,after){const cell=row.insertCell(),b=document.createElement('button');b.className='danger smallbtn';b.textContent='Διαγραφή';b.onclick=async()=>{if(!confirm('Να διαγραφεί αυτή η εγγραφή;'))return;const {error}=await client.from(table).delete().eq('id',id).eq('user_id',user.id);if(error)setStatus(error.message,true);else{await after();setStatus('Η εγγραφή διαγράφηκε.')}};cell.append(b)}
+// Αναπληρώσεις: σύνδεση με αρχικό μάθημα μέσω σημείωσης, χωρίς αλλαγή schema.
+const makeupTag=id=>'[ΑΝΑΠΛΗΡΩΣΗ:'+id+']';
+async function createMakeup(original){
+ if(!user||unlockedUser!==user.id)return;
+ if(original.lesson_status!=='cancelled')return setStatus('Πρώτα χαρακτήρισε το αρχικό μάθημα ως «Δεν πραγματοποιήθηκε».',true);
+ const marker=makeupTag(original.id);
+ const {data:prior,error:checkError}=await client.from('lessons').select('id').eq('user_id',user.id).eq('school_year_id',selectedYear).ilike('notes','%'+marker+'%').limit(1);
+ if(checkError)return setStatus('Αδυναμία ελέγχου αναπλήρωσης: '+checkError.message,true);
+ if(prior.length)return setStatus('Υπάρχει ήδη αναπλήρωση για αυτό το μάθημα.',true);
+ const date=prompt('Ημερομηνία αναπλήρωσης (ΕΕΕΕ-ΜΜ-ΗΗ):',original.lesson_date);
+ if(date===null)return;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(new Date(date+'T12:00:00').getTime())||isoLocal(new Date(date+'T12:00:00'))!==date)return setStatus('Μη έγκυρη ημερομηνία. Χρησιμοποίησε ΕΕΕΕ-ΜΜ-ΗΗ.',true);
+ const start=prompt('Ώρα έναρξης (ΩΩ:ΛΛ):',(original.start_time||'16:00').slice(0,5));if(start===null)return;
+ const end=prompt('Ώρα λήξης (ΩΩ:ΛΛ):',(original.end_time||'17:00').slice(0,5));if(end===null)return;
+ const valid=t=>/^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+ if(!valid(start)||!valid(end)||end<=start)return setStatus('Οι ώρες δεν είναι έγκυρες ή η λήξη δεν είναι μετά την έναρξη.',true);
+ const record={user_id:user.id,school_year_id:selectedYear,group_id:original.group_id,subject_id:original.subject_id,lesson_date:date,start_time:start,end_time:end,lesson_status:'scheduled',notes:marker+' Αναπλήρωση του μαθήματος '+original.lesson_date,is_auto_generated:false};
+ const {error}=await client.from('lessons').insert(record);
+ if(error)return setStatus('Δεν αποθηκεύτηκε η αναπλήρωση: '+error.message,true);
+ await loadAssessments();
+ setStatus('Η αναπλήρωση προγραμματίστηκε για '+date+' '+start+'–'+end+'. Θα χρεωθεί μόνο όταν γίνει «Πραγματοποιήθηκε».');
+}
+function appendMakeupAction(tr,lesson){
+ const b=document.createElement('button');b.type='button';b.className='secondary smallbtn';b.textContent='Αναπλήρωση';
+ b.title='Δημιουργία νέου μαθήματος αναπλήρωσης';
+ b.onclick=()=>createMakeup(lesson);
+ b.style.display=lesson.lesson_status==='cancelled'?'':'none';
+ tr.lastElementChild.append(b);
+ const status=tr.querySelector('select[data-lesson-status]');
+ if(status)status.addEventListener('change',()=>{b.style.display=status.value==='cancelled'?'':'none'});
+}
 let lessonPage=0, lessonHistory=[], lessonHistoryGroups=[], lessonHistorySubjects=[];
 function renderLessonHistory(){
  const body=$('lessonRows');body.replaceChildren();
@@ -392,7 +431,7 @@ function renderLessonHistory(){
   for(const v of [l.lesson_date,groupName,[l.start_time?.slice(0,5),l.end_time?.slice(0,5)].filter(Boolean).join('–'),l.notes||''])td(tr,v);
   appendLessonStatus(tr,l);
   const ac=tr.insertCell(),ab=document.createElement('button');ab.type='button';ab.className='secondary smallbtn';ab.textContent='Παρουσίες';
-  ab.onclick=()=>showAttendance(l,groupName);ac.append(ab);addDelete(tr,'lessons',l.id,loadAssessments);
+  ab.onclick=()=>showAttendance(l,groupName);ac.append(ab);addDelete(tr,'lessons',l.id,loadAssessments);appendMakeupAction(tr,l);
  }
  $('lessonPageInfo').textContent=lessonHistory.length?`${lessonPage*size+1}–${Math.min((lessonPage+1)*size,lessonHistory.length)} από ${lessonHistory.length}`:'0 μαθήματα';
  $('lessonPrevPage').disabled=lessonPage===0;$('lessonNextPage').disabled=lessonPage>=pages-1;
