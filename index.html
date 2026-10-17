@@ -16,7 +16,29 @@
 #publicQuizQuestions .quiz-choice-text{flex:1;min-width:0;display:block}
 #publicQuizTimer{position:sticky;top:0;z-index:5;padding:12px 16px;border-radius:10px;background:#172b58;color:white;font-weight:700;text-align:center}
 @media(max-width:600px){#quizStudent{margin:12px 10px;padding:15px}#publicQuizQuestions fieldset{padding:12px}#publicQuizQuestions legend{font-size:1rem}#publicQuizQuestions label.quiz-choice{font-size:16px;padding:12px 10px}}
-</style></head><body><header><strong><img src="./edumilo-192.png" alt=""> EduMilo</strong><button id="logout" class="secondary hidden">Αποσύνδεση</button></header><main><div id="status" role="status"></div>
+</style>
+<style>
+#quizResults .qr-dashboard{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0}
+#quizResults .qr-stat{border:1px solid #dbe3f0;border-radius:14px;padding:16px;background:#f8faff}
+#quizResults .qr-stat strong{display:block;font-size:1.55rem;color:#193b76;margin-top:7px}
+#quizResults .qr-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+#quizResults .qr-toolbar input,#quizResults .qr-toolbar select{width:auto;max-width:100%;flex:1;min-width:155px}
+#quizResults .qr-table-wrap{overflow-x:auto;border:1px solid #dce4f0;border-radius:12px}
+#quizResults .qr-table{width:100%;border-collapse:collapse;min-width:620px}
+#quizResults .qr-table th,#quizResults .qr-table td{padding:12px;text-align:left;border-bottom:1px solid #e6ebf3}
+#quizResults .qr-table th{background:#f1f5fc;color:#243b63}
+#quizResults .qr-table tbody tr:hover{background:#f7faff}
+#quizResults .qr-detail{border:1px solid #dce4f0;border-radius:12px;padding:14px;margin:12px 0}
+#quizResults .qr-answer{padding:11px 12px;border-left:4px solid #aab8ce;background:#f8fafc;border-radius:8px;margin:9px 0}
+#quizResults .qr-answer.good{border-left-color:#16835e;background:#effaf4}
+#quizResults .qr-answer.bad{border-left-color:#c34444;background:#fff5f4}
+#quizResults .qr-bar{height:11px;border-radius:10px;background:#e5eaf2;overflow:hidden;margin-top:6px}
+#quizResults .qr-bar>div{height:100%;background:#2584b0}
+#quizResults .qr-question{margin:13px 0;overflow-wrap:anywhere}
+@media(max-width:700px){#quizResults .qr-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}#quizResults .qr-stat{padding:11px}#quizResults .qr-stat strong{font-size:1.25rem}}
+@media print{#quizResults .qr-toolbar,#quizRefresh,#quizExportResults{display:none!important}#quizResults .qr-table-wrap{overflow:visible}#quizResults .qr-table{min-width:0;font-size:11px}}
+</style>
+</head><body><header><strong><img src="./edumilo-192.png" alt=""> EduMilo</strong><button id="logout" class="secondary hidden">Αποσύνδεση</button></header><main><div id="status" role="status"></div>
 <section id="config" class="card"><h1>Αρχική σύνδεση Supabase</h1><p class="muted">Συμπλήρωσε το Project URL και το δημόσιο Publishable Key από το δικό σου Supabase project EduMilo. Μη βάλεις secret ή service_role key.</p><form id="configForm"><label>Project URL<input id="url" type="url" placeholder="https://xxxxx.supabase.co" required></label><label>Publishable key<input id="key" placeholder="sb_publishable_..." required></label><button>Αποθήκευση και σύνδεση</button></form></section>
 <section id="auth" class="card hidden"><h1>Σύνδεση</h1><p class="muted">Χρησιμοποίησε τον λογαριασμό που δημιούργησες στο Supabase Authentication.</p><form id="loginForm"><label>Email<input id="email" type="email" required autocomplete="username"></label><label>Κωδικός<input id="password" type="password" required autocomplete="current-password"></label><button>Είσοδος</button></form><p><button id="changeConfig" class="secondary">Αλλαγή Supabase project</button></p></section>
 <section id="pin" class="card hidden"><h1 id="pinTitle">Ξεκλείδωμα EduMilo</h1><p id="pinHint" class="muted"></p><form id="pinForm"><label>Τετραψήφιο PIN<input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required></label><label id="pinConfirmWrap" class="hidden">Επιβεβαίωση PIN<input id="pinConfirm" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off"></label><button id="pinSubmit">Συνέχεια</button></form><p class="pin-actions"><button type="button" id="pinEmail" class="secondary">Είσοδος με email και κωδικό</button></p></section>
@@ -1210,29 +1232,63 @@ async function loadQuizResults(){
  if(!quizCurrent||quizCurrent.id!==quizId)return;
  const attempts=ar.data||[],questions=qr.data||[],wrap=$('quizResults');wrap.replaceChildren();quizReportRows=[];
  if(!attempts.length){wrap.textContent='Δεν υπάρχουν ακόμη υποβολές.';return}
- const make=(tag,text,parent)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);(parent||wrap).append(e);return e};
- const totalScore=attempts.reduce((sum,a)=>sum+Number(a.score||0),0),totalMax=attempts.reduce((sum,a)=>sum+Number(a.max_score||0),0);
- make('h4','Σύνοψη τεστ');make('p','Συμμετοχές: '+attempts.length+' · Μέση βαθμολογία: '+(totalScore/attempts.length).toLocaleString('el-GR',{maximumFractionDigits:2})+'/'+(totalMax/attempts.length).toLocaleString('el-GR',{maximumFractionDigits:2})+' · Μέση επιτυχία: '+quizPercent(totalScore,totalMax));
- make('h4','Κατάταξη και απαντήσεις μαθητών');
- for(const [idx,a] of attempts.entries()){
-  let correct=0,wrong=0,blank=0;const answers=a.answers||{};
-  for(const q of questions){const x=quizAnswerIndex(answers,q.id);if(x<0)blank++;else if(x===q.correct_index)correct++;else wrong++}
+ const el=(tag,text,parent,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);if(cls)n.className=cls;(parent||wrap).append(n);return n};
+ const pct=(a,b)=>b?Math.round(100*a/b):0;
+ const sorted=[...attempts].sort((a,b)=>Number(b.score)/Math.max(1,Number(b.max_score))-Number(a.score)/Math.max(1,Number(a.max_score)));
+ for(const a of sorted){
+  let correct=0,wrong=0,blank=0;
+  for(const q of questions){const x=quizAnswerIndex(a.answers,q.id);if(x<0)blank++;else if(x===q.correct_index)correct++;else wrong++}
   quizReportRows.push({...a,correct,wrong,blank});
-  const details=make('details',undefined,wrap);details.className='group-card';const summary=make('summary',(idx+1)+'. '+a.student_name+' — '+a.score+'/'+a.max_score+' ('+quizPercent(a.score,a.max_score)+')',details);summary.style.cursor='pointer';
-  make('p','Σωστές: '+correct+' · Λάθος: '+wrong+' · Αναπάντητες: '+blank+' · Υποβολή: '+new Date(a.submitted_at).toLocaleString('el-GR'),details);
-  for(const [i,q] of questions.entries()){
-   const x=quizAnswerIndex(answers,q.id),status=x<0?'Αναπάντητη':x===q.correct_index?'Σωστή':'Λάθος';
-   const item=make('p',(i+1)+'. '+q.question_text+' — '+status,details);item.style.marginBottom='3px';
-   make('small','Απάντηση: '+(x>=0?(q.options[x]||'Μη έγκυρη επιλογή'):'—')+' | Σωστή: '+(q.options[q.correct_index]||'—'),details);
-  }
  }
- make('h4','Επιτυχία ανά ερώτηση');
+ const sum=attempts.reduce((n,a)=>n+Number(a.score||0),0),maxSum=attempts.reduce((n,a)=>n+Number(a.max_score||0),0);
+ const rates=attempts.map(a=>pct(Number(a.score||0),Number(a.max_score||0)));
+ el('h3','Αναλυτικός πίνακας αποτελεσμάτων');
+ const stats=el('div',undefined,wrap,'qr-dashboard');
+ for(const [label,value] of [['Συμμετοχές',attempts.length],['Μέσος βαθμός',(sum/attempts.length).toLocaleString('el-GR',{maximumFractionDigits:1})+'/'+(maxSum/attempts.length).toLocaleString('el-GR',{maximumFractionDigits:1})],['Υψηλότερη επίδοση',Math.max(...rates)+'%'],['Χαμηλότερη επίδοση',Math.min(...rates)+'%']]){
+  const box=el('div',undefined,stats,'qr-stat');el('span',label,box);el('strong',value,box);
+ }
+ const tools=el('div',undefined,wrap,'qr-toolbar');
+ const search=el('input',undefined,tools);search.placeholder='Αναζήτηση μαθητή';search.setAttribute('aria-label','Αναζήτηση μαθητή');
+ const order=el('select',undefined,tools);order.setAttribute('aria-label','Ταξινόμηση αποτελεσμάτων');
+ for(const [v,t] of [['score','Βαθμολογία (φθίνουσα)'],['name','Όνομα (Α–Ω)'],['date','Ημερομηνία (νεότερα)']]){const o=el('option',t,order);o.value=v}
+ const print=el('button','Εκτύπωση αναφοράς',tools);print.type='button';print.className='secondary';print.onclick=()=>window.print();
+ const tableWrap=el('div',undefined,wrap,'qr-table-wrap'),table=el('table',undefined,tableWrap,'qr-table');
+ const head=el('thead',undefined,table),hr=el('tr',undefined,head);
+ for(const title of ['#','Μαθητής','Βαθμός','Επιτυχία','Σωστές','Λάθος','Αναπάντητες','Υποβολή'])el('th',title,hr);
+ const body=el('tbody',undefined,table);
+ const detailsTitle=el('h4','Αναλυτικές απαντήσεις μαθητών');
+ const detailsArea=el('div');
+ const render=()=>{
+  body.replaceChildren();detailsArea.replaceChildren();
+  let list=quizReportRows.filter(a=>a.student_name.toLocaleLowerCase('el-GR').includes(search.value.trim().toLocaleLowerCase('el-GR')));
+  if(order.value==='name')list=list.sort((a,b)=>a.student_name.localeCompare(b.student_name,'el'));
+  else if(order.value==='date')list=list.sort((a,b)=>new Date(b.submitted_at)-new Date(a.submitted_at));
+  else list=list.sort((a,b)=>Number(b.score)/Math.max(1,Number(b.max_score))-Number(a.score)/Math.max(1,Number(a.max_score)));
+  for(const [idx,a] of list.entries()){
+   const tr=el('tr',undefined,body);
+   for(const val of [idx+1,a.student_name,a.score+'/'+a.max_score,quizPercent(a.score,a.max_score),a.correct,a.wrong,a.blank,new Date(a.submitted_at).toLocaleString('el-GR')])el('td',val,tr);
+   const d=el('details',undefined,detailsArea,'qr-detail');
+   const summary=el('summary',a.student_name+' — '+a.score+'/'+a.max_score+' ('+quizPercent(a.score,a.max_score)+')',d);summary.style.cursor='pointer';
+   el('p','Σωστές: '+a.correct+' · Λάθος: '+a.wrong+' · Αναπάντητες: '+a.blank+' · Υποβολή: '+new Date(a.submitted_at).toLocaleString('el-GR'),d);
+   for(const [i,q] of questions.entries()){
+    const x=quizAnswerIndex(a.answers,q.id),good=x===q.correct_index,missing=x<0;
+    const item=el('div',undefined,d,'qr-answer '+(missing?'':good?'good':'bad'));
+    el('strong',(i+1)+'. '+q.question_text+' — '+(missing?'Αναπάντητη':good?'✓ Σωστή':'✗ Λάθος'),item);
+    el('div','Απάντηση μαθητή: '+(missing?'—':q.options[x]||'Μη έγκυρη επιλογή'),item);
+    el('div','Σωστή απάντηση: '+(q.options[q.correct_index]||'—'),item);
+   }
+  }
+  if(!list.length)el('tr','Δεν βρέθηκαν μαθητές.',body);
+ };
+ search.addEventListener('input',render);order.addEventListener('change',render);render();
+ el('h4','Επιτυχία ανά ερώτηση');
  for(const [i,q] of questions.entries()){
   const right=attempts.filter(a=>quizAnswerIndex(a.answers,q.id)===q.correct_index).length;
-  const d=make('div',undefined,wrap);d.style.margin='10px 0';make('div',(i+1)+'. '+q.question_text+' — '+right+'/'+attempts.length+' ('+quizPercent(right,attempts.length)+')',d);
-  const track=make('div',undefined,d);track.style.cssText='height:9px;border-radius:8px;background:#e5e7eb;overflow:hidden;margin-top:5px';const fill=make('div',undefined,track);fill.style.cssText='height:100%;background:#2883ae;width:'+100*right/attempts.length+'%';
+  const d=el('div',undefined,wrap,'qr-question');
+  el('div',(i+1)+'. '+q.question_text+' — '+right+'/'+attempts.length+' ('+quizPercent(right,attempts.length)+')',d);
+  const track=el('div',undefined,d,'qr-bar'),fill=el('div',undefined,track);fill.style.width=pct(right,attempts.length)+'%';
  }
- make('p','Σημείωση: Δεν καταγράφεται αξιόπιστος χρόνος ολοκλήρωσης στην τρέχουσα βάση.',wrap).className='muted';
+ el('p','Η επιτυχία ανά ερώτηση υπολογίζεται από τις αποθηκευμένες υποβολές. Δεν εμφανίζεται χρόνος ολοκλήρωσης, επειδή δεν είναι διαθέσιμος με αξιοπιστία.',wrap,'muted');
 }
 async function initPublicQuiz(){
  const params=new URLSearchParams(location.search),token=params.get('test'),sb=params.get('sb'),pk=params.get('pk');
