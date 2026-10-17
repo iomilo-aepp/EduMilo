@@ -1224,11 +1224,13 @@ $('quizExportResults').onclick=()=>{if(!quizCurrent||!quizReportRows.length){$('
 async function loadQuizResults(){
  if(!quizCurrent)return;
  const quizId=quizCurrent.id;
- const [ar,qr]=await Promise.all([
-  client.from('online_attempts').select('student_name,score,max_score,submitted_at,answers').eq('quiz_id',quizId).order('score',{ascending:false}),
-  client.from('online_questions').select('id,question_text,options,correct_index,points,position').eq('quiz_id',quizId).order('position')
+ const [ar,qr,st,su]=await Promise.all([
+  client.from('online_attempts').select('id,student_name,score,max_score,submitted_at,answers').eq('quiz_id',quizId).order('score',{ascending:false}),
+  client.from('online_questions').select('id,question_text,options,correct_index,points,position').eq('quiz_id',quizId).order('position'),
+  client.from('students').select('id,full_name').eq('user_id',user.id).order('full_name'),
+  client.from('subjects').select('id,name').eq('user_id',user.id).order('name')
  ]);
- if(ar.error)return quizError(ar.error);if(qr.error)return quizError(qr.error);
+ for(const r of [ar,qr,st,su])if(r.error)return quizError(r.error);
  if(!quizCurrent||quizCurrent.id!==quizId)return;
  const attempts=ar.data||[],questions=qr.data||[],wrap=$('quizResults');wrap.replaceChildren();quizReportRows=[];
  if(!attempts.length){wrap.textContent='Δεν υπάρχουν ακόμη υποβολές.';return}
@@ -1270,6 +1272,36 @@ async function loadQuizResults(){
    const d=el('details',undefined,detailsArea,'qr-detail');
    const summary=el('summary',a.student_name+' — '+a.score+'/'+a.max_score+' ('+quizPercent(a.score,a.max_score)+')',d);summary.style.cursor='pointer';
    el('p','Σωστές: '+a.correct+' · Λάθος: '+a.wrong+' · Αναπάντητες: '+a.blank+' · Υποβολή: '+new Date(a.submitted_at).toLocaleString('el-GR'),d);
+   const sync=el('div',undefined,d,'qr-toolbar');
+   const studentPick=el('select',undefined,sync);studentPick.setAttribute('aria-label','Επιλογή μαθητή EduMilo');
+   let op=el('option','Επιλογή μαθητή EduMilo',studentPick);op.value='';
+   for(const student of st.data||[]){op=el('option',student.full_name,studentPick);op.value=student.id}
+   const subjectPick=el('select',undefined,sync);subjectPick.setAttribute('aria-label','Επιλογή μαθήματος');
+   op=el('option','Επιλογή μαθήματος',subjectPick);op.value='';
+   for(const subject of su.data||[]){op=el('option',subject.name,subjectPick);op.value=subject.id}
+   const save=el('button','Καταχώριση βαθμού στην καρτέλα',sync);save.type='button';
+   const feedback=el('small','',d);
+   save.onclick=async()=>{
+    if(!studentPick.value||!subjectPick.value){feedback.textContent='Επίλεξε μαθητή και μάθημα.';return}
+    if(!Number(a.max_score)){feedback.textContent='Δεν υπάρχει έγκυρη μέγιστη βαθμολογία.';return}
+    if(!selectedYear){feedback.textContent='Επίλεξε σχολικό έτος.';return}
+    const marker='[Online:'+a.id+']';
+    const examTitle=('Online Τεστ – '+quizCurrent.title).slice(0,100)+' '+marker;
+    save.disabled=true;
+    try{
+     const existing=await client.from('grades').select('id').eq('user_id',user.id).eq('student_id',studentPick.value).eq('exam_title',examTitle).limit(1);
+     if(existing.error)throw existing.error;
+     if(existing.data?.length){feedback.textContent='Αυτή η υποβολή έχει ήδη καταχωριστεί για τον μαθητή.';return}
+     const grade=Math.round((Number(a.score)/Number(a.max_score))*200)/10;
+     const date=(a.submitted_at||new Date().toISOString()).slice(0,10);
+     const record={user_id:user.id,student_id:studentPick.value,subject_id:subjectPick.value,exam_title:examTitle,exam_date:date,grade,school_year_id:selectedYear};
+     const res=await client.from('grades').insert(record);
+     if(res.error)throw res.error;
+     feedback.textContent='✓ Καταχωρίστηκε '+grade+'/20 στην καρτέλα του μαθητή.';
+    }catch(err){feedback.textContent='Σφάλμα: '+(err.message||String(err))}
+    finally{save.disabled=false}
+   };
+
    for(const [i,q] of questions.entries()){
     const x=quizAnswerIndex(a.answers,q.id),good=x===q.correct_index,missing=x<0;
     const item=el('div',undefined,d,'qr-answer '+(missing?'':good?'good':'bad'));
