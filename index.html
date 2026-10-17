@@ -1253,7 +1253,19 @@ async function loadQuizResults(){
  const search=el('input',undefined,tools);search.placeholder='Αναζήτηση μαθητή';search.setAttribute('aria-label','Αναζήτηση μαθητή');
  const order=el('select',undefined,tools);order.setAttribute('aria-label','Ταξινόμηση αποτελεσμάτων');
  for(const [v,t] of [['score','Βαθμολογία (φθίνουσα)'],['name','Όνομα (Α–Ω)'],['date','Ημερομηνία (νεότερα)']]){const o=el('option',t,order);o.value=v}
- const print=el('button','Εκτύπωση αναφοράς',tools);print.type='button';print.className='secondary';print.onclick=()=>window.print();
+ const print=el('button','Εκτύπωση αναφοράς',tools);print.type='button';print.className='secondary';print.onclick=()=>{
+  const report=wrap.cloneNode(true);
+  report.querySelectorAll('.qr-toolbar').forEach(n=>n.remove());
+  report.querySelectorAll('details').forEach(n=>n.open=true);
+  report.querySelectorAll('button,input,select').forEach(n=>n.remove());
+  const win=window.open('','_blank');
+  if(!win){alert('Ο browser εμπόδισε το παράθυρο εκτύπωσης. Επίτρεψε τα αναδυόμενα παράθυρα για το EduMilo.');return}
+  const doc=win.document;
+  doc.open();doc.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>Αποτελέσματα Online Τεστ</title><style>@page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;color:#17233b;margin:20px}h1{font-size:20px}h3{font-size:18px}h4{font-size:15px;margin-top:24px}.qr-dashboard{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin:14px 0}.qr-stat{border:1px solid #ccd4e1;padding:10px;border-radius:7px}.qr-stat strong{display:block;font-size:18px;margin-top:5px}.qr-table{width:100%;border-collapse:collapse;font-size:10px}.qr-table th,.qr-table td{border:1px solid #ccd4e1;padding:6px;text-align:left}.qr-table th{background:#f0f4fa}.qr-detail{break-inside:avoid;border:1px solid #ccd4e1;padding:9px;margin:12px 0}.qr-answer{padding:7px;margin:5px 0;border-left:3px solid #aaa}.qr-answer.good{border-color:#16835e}.qr-answer.bad{border-color:#c34444}.qr-question{margin:10px 0;break-inside:avoid}.qr-bar{height:8px;background:#e5eaf2}.qr-bar div{height:100%;background:#2584b0;print-color-adjust:exact}summary{font-weight:bold}button{display:none}</style></head><body><h1>EduMilo — Αποτελέσματα Online Τεστ</h1><p id="printQuizTitle"></p><div id="printReport"></div></body></html>');doc.close();
+  doc.getElementById('printQuizTitle').textContent=quizCurrent?.title||'';
+  doc.getElementById('printReport').append(doc.importNode(report,true));
+  win.focus();win.print();
+ };
  const tableWrap=el('div',undefined,wrap,'qr-table-wrap'),table=el('table',undefined,tableWrap,'qr-table');
  const head=el('thead',undefined,table),hr=el('tr',undefined,head);
  for(const title of ['#','Μαθητής','Βαθμός','Επιτυχία','Σωστές','Λάθος','Αναπάντητες','Υποβολή'])el('th',title,hr);
@@ -1329,15 +1341,23 @@ async function initPublicQuiz(){
  try{publicClient=createClient(sb,pk,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});
  const {data,error}=await publicClient.rpc('online_test_public_get',{p_token:token});if(error)throw error;if(!data||data.error)throw Error(data?.error||'Το τεστ δεν είναι διαθέσιμο.');publicQuiz=data;
  $('publicQuizTitle').textContent=data.title;$('publicQuizInfo').textContent=data.questions.length+' ερωτήσεις · '+data.duration_minutes+' λεπτά';
+ if(localStorage.getItem('edumilo_test_done_'+token)==='1'){$('publicQuizStart').classList.add('hidden');$('publicQuizMessage').textContent='Έχεις ήδη ολοκληρώσει αυτό το τεστ από αυτή τη συσκευή. Δεν επιτρέπεται νέα προσπάθεια.';}
  }catch(e){$('publicQuizStart').classList.add('hidden');$('publicQuizMessage').textContent=e.message}
 }
-$('publicQuizStart').onsubmit=e=>{e.preventDefault();if(!publicQuiz)return;const name=$('publicQuizName').value.trim();if(name.length<3)return;
+$('publicQuizStart').onsubmit=async e=>{e.preventDefault();if(!publicQuiz)return;const name=$('publicQuizName').value.trim();if(name.length<3)return;
+ const token=new URLSearchParams(location.search).get('test');const lockKey='edumilo_test_done_'+token;
+ if(localStorage.getItem(lockKey)==='1'){$('publicQuizMessage').textContent='Έχεις ήδη ολοκληρώσει αυτό το τεστ από αυτή τη συσκευή.';return}
+ const startBtn=$('publicQuizStart').querySelector('button');startBtn.disabled=true;
+ try{const {data,error}=await publicClient.rpc('online_test_public_check',{p_token:token,p_name:name});if(error)throw error;if(data?.error)throw Error(data.error);if(data?.submitted){$('publicQuizMessage').textContent='Έχει ήδη υποβληθεί αυτό το τεστ με το συγκεκριμένο ονοματεπώνυμο. Δεν επιτρέπεται δεύτερη προσπάθεια.';return}}
+ catch(err){$('publicQuizMessage').textContent='Δεν έγινε έλεγχος συμμετοχής: '+(err.message||err);return}
+ finally{startBtn.disabled=false}
+ $('publicQuizMessage').textContent='';
  publicStart=Date.now();$('publicQuizStart').classList.add('hidden');$('publicQuizForm').classList.remove('hidden');const wrap=$('publicQuizQuestions');wrap.replaceChildren();
  for(const [i,q] of publicQuiz.questions.entries()){const field=document.createElement('fieldset'),legend=document.createElement('legend');legend.textContent=(i+1)+'. '+q.question_text+' ('+q.points+' μον.)';field.append(legend);for(const [j,choice] of q.options.entries()){const label=document.createElement('label'),input=document.createElement('input');input.type='radio';input.name='q_'+q.id;input.value=String(j);label.className='quiz-choice';const choiceText=document.createElement('span');choiceText.className='quiz-choice-text';choiceText.textContent=choice;label.append(input,choiceText);field.append(label)}wrap.append(field)}
  const tick=()=>{const remain=Math.max(0,publicQuiz.duration_minutes*60-Math.floor((Date.now()-publicStart)/1000));$('publicQuizTimer').textContent='Χρόνος: '+Math.floor(remain/60)+':'+String(remain%60).padStart(2,'0');if(remain===0){clearInterval(publicInterval);$('publicQuizForm').requestSubmit()}};tick();publicInterval=setInterval(tick,1000);
 };
 $('publicQuizForm').onsubmit=async e=>{e.preventDefault();if(!publicQuiz)return;clearInterval(publicInterval);const answers={};for(const q of publicQuiz.questions){const selected=document.querySelector('input[name="q_'+q.id+'"]:checked');if(selected)answers[q.id]=Number(selected.value)}
- const button=$('publicQuizForm').querySelector('button');button.disabled=true;try{const {data,error}=await publicClient.rpc('online_test_public_submit',{p_token:new URLSearchParams(location.search).get('test'),p_name:$('publicQuizName').value.trim(),p_answers:answers,p_elapsed_seconds:Math.floor((Date.now()-publicStart)/1000)});if(error)throw error;if(data?.error)throw Error(data.error);$('publicQuizForm').classList.add('hidden');$('publicQuizMessage').textContent='Ολοκληρώθηκε! Βαθμολογία: '+data.score+'/'+data.max_score+' μονάδες.'}catch(e){$('publicQuizMessage').textContent='Δεν αποθηκεύτηκε: '+e.message;button.disabled=false}};
+ const button=$('publicQuizForm').querySelector('button');button.disabled=true;try{const {data,error}=await publicClient.rpc('online_test_public_submit',{p_token:new URLSearchParams(location.search).get('test'),p_name:$('publicQuizName').value.trim(),p_answers:answers,p_elapsed_seconds:Math.floor((Date.now()-publicStart)/1000)});if(error)throw error;if(data?.error)throw Error(data.error);localStorage.setItem('edumilo_test_done_'+new URLSearchParams(location.search).get('test'),'1');$('publicQuizForm').classList.add('hidden');$('publicQuizStart').classList.add('hidden');$('publicQuizMessage').textContent='Ολοκληρώθηκε! Βαθμολογία: '+data.score+'/'+data.max_score+' μονάδες.'}catch(e){$('publicQuizMessage').textContent='Δεν αποθηκεύτηκε: '+e.message;button.disabled=false}};
 const originalTabs=document.querySelector('[data-tab="onlineTests"]');originalTabs.addEventListener('click',()=>loadQuizzes());
 if(new URLSearchParams(location.search).has('test'))initPublicQuiz();else connect();
 </script></body></html>
