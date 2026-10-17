@@ -319,7 +319,12 @@ $('progressGenerate').onclick=async()=>{
   await openStudentProfile(id);
   const content=$('profileContent');
   if(content.textContent.includes('Δεν φορτώθηκε η καρτέλα:'))throw Error(content.textContent);
-  const copy=content.cloneNode(true);root.append(copy);$('studentProfile').classList.add('hidden');$('progressPrint').disabled=false;
+  const copy=content.cloneNode(true);
+  // Η αναφορά προόδου τελειώνει στις βαθμολογίες: χωρίς εργασίες ή υποσημείωση.
+  const sections=[...copy.children];
+  const homeworkStart=sections.findIndex(el=>el.tagName==='H3'&&el.textContent.trim()==='Εργασίες για το σπίτι');
+  if(homeworkStart>=0)sections.slice(homeworkStart).forEach(el=>el.remove());
+  root.append(copy);$('studentProfile').classList.add('hidden');$('progressPrint').disabled=false;
  }catch(err){root.textContent='Αδυναμία δημιουργίας αναφοράς: '+err.message;$('studentProfile').classList.add('hidden')}
  finally{button.disabled=false}
 };
