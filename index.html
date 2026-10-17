@@ -328,6 +328,7 @@ $('progressPrint').onclick=()=>{
  const win=window.open('','_blank');if(!win){alert('Επίτρεψε τα αναδυόμενα παράθυρα για εκτύπωση.');return}
  win.document.open();win.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>EduMilo - Αναφορά προόδου</title><style>@page{size:A4;margin:15mm}body{font:12px Arial,sans-serif;color:#17233b}h1{font-size:22px}h2{font-size:19px}h3{font-size:15px;margin-top:22px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border:1px solid #bbc6d5;padding:7px;text-align:left}tr{break-inside:avoid}p{line-height:1.5}h2,h3{break-after:avoid}</style></head><body><h1>EduMilo — Αναφορά προόδου μαθητή</h1><div id="report"></div></body></html>');win.document.close();
  const printCopy=win.document.importNode(root,true);
+ printCopy.querySelectorAll('.progress-chart-tools').forEach(x=>x.remove());
  // Μόνο στην εκτύπωση: αφαίρεση ενότητας εργασιών και τελικής σημείωσης.
  const headings=[...printCopy.querySelectorAll('h3')];
  const homeworkHeading=headings.find(h=>h.textContent.trim()==='Εργασίες για το σπίτι');
@@ -364,6 +365,39 @@ async function openStudentProfile(studentId){
   const gp=document.createElement('p');gp.textContent='Καταχωρισμένοι βαθμοί: '+gradeList.length+' | Μέσος όρος: '+(avg===null?'—':avg.toLocaleString('el-GR',{maximumFractionDigits:2})+'/20');root.append(gp);
   if(gradeList.length)profileTable(root,['Ημερομηνία','Αξιολόγηση','Βαθμός'],gradeList.map(g=>[g.exam_date,g.exam_title,Number(g.grade).toLocaleString('el-GR')+'/20']));
   else{const empty=document.createElement('p');empty.textContent='Δεν υπάρχουν βαθμολογίες για αυτό το σχολικό έτος.';root.append(empty)}
+  // Διαδραστικά φίλτρα και SVG γραφήματα προόδου, χωρίς εξωτερική βιβλιοθήκη.
+  const chartHeading=document.createElement('h3');chartHeading.textContent='Γραφήματα προόδου βαθμολογιών';root.append(chartHeading);
+  if(gradeList.length){
+   const subjectResult=await client.from('subjects').select('id,name').eq('user_id',user.id);
+   const subjectNames=new Map((subjectResult.data||[]).map(x=>[String(x.id),x.name]));
+   const chartTools=document.createElement('div');chartTools.className='progress-chart-tools';chartTools.style.cssText='display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0';
+   const chartLabel=document.createElement('label');chartLabel.textContent='Μάθημα: ';const pick=document.createElement('select');pick.style.width='auto';pick.style.minWidth='170px';
+   const addOption=(value,label)=>{const opt=document.createElement('option');opt.value=value;opt.textContent=label;pick.append(opt)};
+   addOption('','Όλα τα μαθήματα');for(const key of [...new Set(gradeList.map(g=>String(g.subject_id||'')))].sort())addOption(key,subjectNames.get(key)||'Χωρίς μάθημα');
+   chartLabel.append(pick);chartTools.append(chartLabel);root.append(chartTools);
+   const chartArea=document.createElement('div');root.append(chartArea);
+   const svgNS='http://www.w3.org/2000/svg';
+   const svgEl=(tag,attrs={},text)=>{const node=document.createElementNS(svgNS,tag);for(const [k,v] of Object.entries(attrs))node.setAttribute(k,String(v));if(text!==undefined)node.textContent=String(text);return node};
+   const drawChart=()=>{
+    chartArea.replaceChildren();
+    const values=gradeList.filter(g=>!pick.value||String(g.subject_id||'')===pick.value).slice().sort((a,b)=>String(a.exam_date||'').localeCompare(String(b.exam_date||'')));
+    if(!values.length){chartArea.textContent='Δεν υπάρχουν βαθμολογίες για αυτό το μάθημα.';return}
+    const info=document.createElement('p');info.textContent='Αξιολογήσεις: '+values.length+' | Μέσος όρος: '+(values.reduce((n,g)=>n+Number(g.grade),0)/values.length).toLocaleString('el-GR',{maximumFractionDigits:2})+'/20';chartArea.append(info);
+    const width=760,height=280,left=48,right=20,top=24,bottom=65,plotW=width-left-right,plotH=height-top-bottom;
+    const svg=svgEl('svg',{viewBox:`0 0 ${width} ${height}`,role:'img','aria-label':'Γράφημα εξέλιξης βαθμολογιών',style:'display:block;width:100%;max-width:850px;height:auto;background:#fbfcff;border:1px solid #dce5f2;border-radius:12px'});
+    for(const tick of [0,5,10,15,20]){const y=top+plotH-tick/20*plotH;svg.append(svgEl('line',{x1:left,y1:y,x2:width-right,y2:y,stroke:'#dfe6f0'}));svg.append(svgEl('text',{x:left-10,y:y+4,'text-anchor':'end','font-size':12,fill:'#53637a'},tick))}
+    const coords=values.map((g,i)=>({x:left+(values.length===1?plotW/2:i*plotW/(values.length-1)),y:top+plotH-Math.max(0,Math.min(20,Number(g.grade)))/20*plotH,g}));
+    if(coords.length>1)svg.append(svgEl('polyline',{points:coords.map(p=>p.x+','+p.y).join(' '),fill:'none',stroke:'#2879ba','stroke-width':3,'stroke-linejoin':'round','stroke-linecap':'round'}));
+    for(const [i,p] of coords.entries()){
+     const dot=svgEl('circle',{cx:p.x,cy:p.y,r:5,fill:'#2879ba',stroke:'white','stroke-width':2});dot.append(svgEl('title',{},(p.g.exam_title||'Αξιολόγηση')+' — '+p.g.grade+'/20 ('+(p.g.exam_date||'')+')'));svg.append(dot);
+     svg.append(svgEl('text',{x:p.x,y:Math.max(12,p.y-11),'text-anchor':'middle','font-size':11,fill:'#183c69'},Number(p.g.grade).toLocaleString('el-GR')));
+     if(values.length<=12||i%Math.ceil(values.length/12)===0){const label=svgEl('text',{x:p.x,y:height-bottom+18,'text-anchor':'end','font-size':10,fill:'#53637a',transform:`rotate(-35 ${p.x} ${height-bottom+18})`},String(p.g.exam_date||'').slice(5));svg.append(label)}
+    }
+    chartArea.append(svg);
+    const note=document.createElement('p');note.className='muted';note.textContent='Κάθε σημείο αντιστοιχεί σε καταχωρισμένη βαθμολογία. Οι βαθμοί εμφανίζονται σε κλίμακα 0–20.';chartArea.append(note);
+   };
+   pick.addEventListener('change',drawChart);drawChart();
+  }else{const p=document.createElement('p');p.textContent='Δεν υπάρχουν βαθμολογίες για γράφημα.';root.append(p)}
   const hwHeading=document.createElement('h3');hwHeading.textContent='Εργασίες για το σπίτι';root.append(hwHeading);
   try{
    const groupIds=groups.data.filter(g=>members.data.some(m=>m.group_id===g.id)).map(g=>g.id);
