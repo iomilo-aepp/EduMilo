@@ -376,9 +376,31 @@ async function meLoadGroups(){
 }
 function meSuggest(row){
  const grades=row.grades,mean=grades.length?grades.reduce((a,b)=>a+b,0)/grades.length:null;
- let text=mean===null?'Ο/Η μαθητής/τρια συμμετέχει στη μαθησιακή διαδικασία. Χρειάζεται περαιτέρω παρακολούθηση της επίδοσής του/της.':mean>=18?'Παρουσιάζει εξαιρετική επίδοση και πολύ καλή κατανόηση της ύλης. Συνεχίζει με συνέπεια την προσπάθειά του/της.':mean>=15?'Παρουσιάζει πολύ καλή επίδοση και σταθερή πρόοδο. Με συνεχή εξάσκηση μπορεί να βελτιωθεί ακόμη περισσότερο.':mean>=12?'Παρουσιάζει ικανοποιητική επίδοση. Προτείνεται συστηματικότερη εξάσκηση για την εμπέδωση της ύλης.':mean>=10?'Καταβάλλει προσπάθεια, αλλά χρειάζεται πιο συστηματική μελέτη και επανάληψη των βασικών εννοιών.':'Χρειάζεται ενίσχυση της μελέτης και συχνή εξάσκηση στις βασικές έννοιες του μαθήματος.';
- if(row.absent>=2)text+=' Χρειάζεται επίσης μεγαλύτερη συνέπεια στις παρουσίες.';
- return text;
+ // Rule-based drafts: no unobserved claims about effort, behaviour or homework.
+ const variants=mean===null?[
+  'Δεν υπάρχουν καταχωρισμένες βαθμολογίες για τον μήνα. Χρειάζεται συνολική αξιολόγηση από τον/την καθηγητή/τρια.',
+  'Για τον συγκεκριμένο μήνα δεν έχει καταχωριστεί βαθμός. Το σχόλιο μπορεί να συμπληρωθεί με παρατηρήσεις από το μάθημα.'
+ ]:mean>=18?[
+  'Οι καταχωρισμένες αξιολογήσεις δείχνουν εξαιρετική επίδοση και πολύ καλή κατανόηση της εξεταζόμενης ύλης.',
+  'Η επίδοση στις αξιολογήσεις του μήνα είναι ιδιαίτερα υψηλή. Στόχος είναι η διατήρηση αυτού του επιπέδου.'
+ ]:mean>=15?[
+  'Η εικόνα των αξιολογήσεων είναι πολύ καλή. Η περαιτέρω εξάσκηση μπορεί να ενισχύσει ακόμη περισσότερο την επίδοση.',
+  'Οι βαθμολογίες του μήνα δείχνουν καλή κατανόηση της ύλης, με περιθώρια για ακόμη μεγαλύτερη πρόοδο.'
+ ]:mean>=12?[
+  'Η επίδοση του μήνα είναι ικανοποιητική. Χρήσιμη θα ήταν η στοχευμένη επανάληψη σε σημεία που δυσκολεύουν.',
+  'Οι καταχωρισμένοι βαθμοί δείχνουν μια θετική βάση, με ανάγκη για περισσότερη εξάσκηση σε απαιτητικές ασκήσεις.'
+ ]:mean>=10?[
+  'Οι αξιολογήσεις δείχνουν ότι υπάρχουν περιθώρια βελτίωσης. Προτείνεται συστηματική επανάληψη των βασικών εννοιών.',
+  'Η επίδοση χρειάζεται ενίσχυση. Η σταδιακή εξάσκηση σε βασικές και συνδυαστικές ασκήσεις μπορεί να βοηθήσει.'
+ ]:[
+  'Οι βαθμολογίες δείχνουν σημαντικές δυσκολίες στην εξεταζόμενη ύλη. Προτείνεται οργανωμένη επανάληψη και στοχευμένη εξάσκηση.',
+  'Χρειάζεται ενίσχυση της κατανόησης των βασικών εννοιών, με μικρά βήματα και τακτικό έλεγχο προόδου.'
+ ];
+ const key=String(row.id||row.name||'')+'-'+$('meMonth').value;
+ let hash=0;for(const ch of key)hash=(hash*31+ch.charCodeAt(0))>>>0;
+ let result=variants[hash%variants.length];
+ if(row.absent>=2)result+=' Καταγράφηκαν '+row.absent+' απουσίες τον μήνα αυτό.';
+ return result;
 }
 $('meLoad').onclick=async()=>{
  const groupId=$('meGroup').value,month=$('meMonth').value;if(!groupId||!/^\d{4}-\d{2}$/.test(month))return setStatus('Επίλεξε τμήμα και μήνα.',true);
@@ -401,12 +423,12 @@ $('meLoad').onclick=async()=>{
  meRows=(students.data||[]).filter(x=>ids.has(x.id)).sort((a,b)=>a.full_name.localeCompare(b.full_name,'el')).map(st=>({id:st.id,name:st.full_name,grades:(grades.data||[]).filter(g=>g.student_id===st.id&&(!gr.data.subject_id||g.subject_id===gr.data.subject_id)&&Number.isFinite(Number(g.grade))).map(g=>Number(g.grade)),absent:(attendance.data||[]).filter(a=>a.student_id===st.id&&lessonIds.has(a.lesson_id)&&a.status==='absent').length,comment:saved.get(st.id)||''}));
  const root=$('meStudents');root.replaceChildren();
  for(const row of meRows){const box=document.createElement('div');box.className='card';box.style.margin='12px 0';const h=document.createElement('h3');h.textContent=row.name;box.append(h);const meta=document.createElement('p');meta.className='muted';meta.textContent='Βαθμοί μήνα: '+(row.grades.join(', ')||'Δεν υπάρχουν')+' | Απουσίες: '+row.absent;box.append(meta);const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Πρόταση σχολίου';const t=document.createElement('textarea');t.rows=3;t.style.width='100%';t.value=row.comment;t.placeholder='Σχόλιο καθηγητή…';t.addEventListener('input',()=>row.comment=t.value);b.onclick=()=>{if(t.value.trim()&&!confirm('Να αντικατασταθεί το υπάρχον σχόλιο;'))return;t.value=meSuggest(row);row.comment=t.value};box.append(b,t);root.append(box)}
- $('meInfo').textContent='Μαθητές: '+meRows.length+' · Αποθηκευμένα σχόλια: '+saved.size;for(const id of ['meSave','mePrint','meSuggestAll'])$(id).disabled=!meRows.length;
+ $('meInfo').textContent='Μαθητές: '+meRows.length+' · Αποθηκευμένα σχόλια: '+saved.size+' · Οι προτάσεις βασίζονται μόνο σε βαθμούς και απουσίες. Έλεγξέ τες πριν τις δώσεις στους γονείς.';for(const id of ['meSave','mePrint','meSuggestAll'])$(id).disabled=!meRows.length;
  }catch(e){$('meInfo').textContent='Σφάλμα: '+e.message;setStatus('Σφάλμα αξιολογήσεων: '+e.message,true)}finally{button.disabled=false}
 };
 $('meSuggestAll').onclick=()=>{if(meRows.some(r=>r.comment.trim())&&!confirm('Να αντικατασταθούν και τα υπάρχοντα σχόλια;'))return;for(const r of meRows)r.comment=meSuggest(r);$('meStudents').querySelectorAll('textarea').forEach((t,i)=>t.value=meRows[i].comment)};
 $('meSave').onclick=async()=>{if(!meRows.length)return;const btn=$('meSave');btn.disabled=true;try{const month=$('meMonth').value+'-01',groupId=$('meGroup').value;const rows=meRows.map(r=>({user_id:user.id,school_year_id:selectedYear,group_id:groupId,student_id:r.id,month,comment:r.comment.trim()}));const {error}=await client.from('monthly_student_comments').upsert(rows,{onConflict:'user_id,group_id,student_id,month'});if(error)throw error;setStatus('Οι μηνιαίες αξιολογήσεις αποθηκεύτηκαν.')}catch(e){setStatus('Σφάλμα αποθήκευσης: '+e.message,true)}finally{btn.disabled=false}};
-$('mePrint').onclick=()=>{if(!meRows.length)return;const w=window.open('','_blank');if(!w){alert('Επίτρεψε τα αναδυόμενα παράθυρα.');return}w.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>Μηνιαία αξιολόγηση</title><style>@page{size:A4;margin:22mm}body{font:13px Arial,sans-serif;color:#111;line-height:1.5}header{margin:60px 0 55px}header p{margin:13px 0}li{margin:8px 0;break-inside:avoid}ul{padding-left:25px}</style></head><body><header id="header"></header><ul id="entries"></ul></body></html>');w.document.close();const header=w.document.getElementById('header');for(const [key,value] of [['Μήνας', $('meMonth').value],['Ονοματεπώνυμο καθηγητή',$('meTeacher').value],['Τάξη',$('meClass').value],['Μάθημα','Πληροφορική']]){const p=w.document.createElement('p');p.textContent=key+': '+value;header.append(p)}const list=w.document.getElementById('entries');for(const row of meRows){const li=w.document.createElement('li');li.textContent=row.name.toUpperCase()+': '+(row.comment.trim()||'Δεν έχει καταχωριστεί σχόλιο.')+(row.grades.length?' Βαθμός τεστ: '+row.grades.join(', '):'');list.append(li)}w.focus();w.print()};
+$('mePrint').onclick=()=>{if(!meRows.length)return;const w=window.open('','_blank');if(!w){alert('Επίτρεψε τα αναδυόμενα παράθυρα.');return}w.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>Μηνιαία αξιολόγηση</title><style>@page{size:A4;margin:22mm}body{font:13px Arial,sans-serif;color:#111;line-height:1.5}header{margin:60px 0 55px}header p{margin:13px 0}li{margin:8px 0;break-inside:avoid}ul{padding-left:25px}</style></head><body><header id="header"></header><ul id="entries"></ul></body></html>');w.document.close();const header=w.document.getElementById('header');for(const [key,value] of [['Μήνας', new Intl.DateTimeFormat('el-GR',{month:'long',year:'numeric'}).format(new Date($('meMonth').value+'-01T12:00:00'))],['Ονοματεπώνυμο καθηγητή',$('meTeacher').value],['Τάξη',$('meClass').value],['Μάθημα','Πληροφορική']]){const p=w.document.createElement('p');p.textContent=key+': '+value;header.append(p)}const list=w.document.getElementById('entries');for(const row of meRows){const li=w.document.createElement('li');li.textContent=row.name.toUpperCase()+': '+(row.comment.trim()||'Δεν έχει καταχωριστεί σχόλιο.')+(row.grades.length?' Βαθμοί αξιολογήσεων: '+row.grades.join(', '):'');list.append(li)}w.focus();setTimeout(()=>w.print(),250)};
 
 function profileCell(tr,value,heading=false){const c=document.createElement(heading?'th':'td');c.textContent=String(value??'—');c.style.padding='7px';c.style.borderBottom='1px solid #ddd';tr.append(c)}
 function profileTable(root,headers,rows){const table=document.createElement('table');table.style.width='100%';table.style.borderCollapse='collapse';const head=table.insertRow();headers.forEach(h=>profileCell(head,h,true));for(const values of rows){const row=table.insertRow();values.forEach(v=>profileCell(row,v))}root.append(table)}
