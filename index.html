@@ -354,21 +354,6 @@ $('progressPrint').onclick=()=>{
  const root=$('progressReportBody');if(!root.textContent.trim())return;
  const win=window.open('','_blank');if(!win){alert('Επίτρεψε τα αναδυόμενα παράθυρα για εκτύπωση.');return}
  win.document.open();win.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>EduMilo - Αναφορά προόδου</title><style>@page{size:A4;margin:15mm}body{font:12px Arial,sans-serif;color:#17233b}h1{font-size:22px}h2{font-size:19px}h3{font-size:15px;margin-top:22px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border:1px solid #bbc6d5;padding:7px;text-align:left}tr{break-inside:avoid}p{line-height:1.5}h2,h3{break-after:avoid}</style></head><body><h1>EduMilo — Αναφορά προόδου μαθητή</h1><div id="report"></div>
-<script>
-(function(){
- const toggle=document.getElementById('mobileMenuToggle');
- const nav=document.getElementById('edumiloMainNav');
- const current=document.getElementById('mobileMenuCurrent');
- if(!toggle||!nav)return;
- function close(){nav.classList.remove('menu-open');toggle.setAttribute('aria-expanded','false')}
- toggle.addEventListener('click',()=>{const open=nav.classList.toggle('menu-open');toggle.setAttribute('aria-expanded',String(open))});
- nav.querySelectorAll('button[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{
-  current.textContent=btn.textContent.trim();
-  close();
- }));
- document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
-})();
-</script>
 </body></html>');win.document.close();
  const printCopy=win.document.importNode(root,true);
  printCopy.querySelectorAll('.progress-chart-tools').forEach(x=>x.remove());
@@ -1511,5 +1496,19 @@ $('publicQuizStart').onsubmit=async e=>{e.preventDefault();if(!publicQuiz)return
 $('publicQuizForm').onsubmit=async e=>{e.preventDefault();if(!publicQuiz)return;clearInterval(publicInterval);const answers={};for(const q of publicQuiz.questions){const selected=document.querySelector('input[name="q_'+q.id+'"]:checked');if(selected)answers[q.id]=Number(selected.value)}
  const button=$('publicQuizForm').querySelector('button');button.disabled=true;try{const {data,error}=await publicClient.rpc('online_test_public_submit',{p_token:new URLSearchParams(location.search).get('test'),p_name:$('publicQuizName').value.trim(),p_answers:answers,p_elapsed_seconds:Math.floor((Date.now()-publicStart)/1000)});if(error)throw error;if(data?.error)throw Error(data.error);localStorage.setItem('edumilo_test_done_'+new URLSearchParams(location.search).get('test'),'1');$('publicQuizForm').classList.add('hidden');$('publicQuizStart').classList.add('hidden');$('publicQuizMessage').textContent='Ολοκληρώθηκε! Βαθμολογία: '+data.score+'/'+data.max_score+' μονάδες.'}catch(e){$('publicQuizMessage').textContent='Δεν αποθηκεύτηκε: '+e.message;button.disabled=false}};
 const originalTabs=document.querySelector('[data-tab="onlineTests"]');originalTabs.addEventListener('click',()=>loadQuizzes());
+(function(){
+ const toggle=document.getElementById('mobileMenuToggle');
+ const nav=document.getElementById('edumiloMainNav');
+ const current=document.getElementById('mobileMenuCurrent');
+ if(!toggle||!nav)return;
+ function close(){nav.classList.remove('menu-open');toggle.setAttribute('aria-expanded','false')}
+ toggle.addEventListener('click',()=>{const open=nav.classList.toggle('menu-open');toggle.setAttribute('aria-expanded',String(open))});
+ nav.querySelectorAll('button[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{
+  current.textContent=btn.textContent.trim();
+  close();
+ }));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+})();
+
 if(new URLSearchParams(location.search).has('test'))initPublicQuiz();else connect();
 </script></body></html>
