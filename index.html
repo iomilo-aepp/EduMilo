@@ -462,6 +462,13 @@ function meSuggest(row){
  else if(delta<=-1.5)result+=' Σε σχέση με τον προηγούμενο μήνα, ο μέσος όρος των καταχωρισμένων βαθμών έχει μειωθεί και χρειάζεται προσοχή.';
  else result+=' Ο μέσος όρος των καταχωρισμένων βαθμών παραμένει περίπου σταθερός σε σχέση με τον προηγούμενο μήνα.';
  }
+ if(row.homework&&row.homework.checked>0){
+ const hw=row.homework,pct=Math.round(100*hw.ratio);
+ result+=' Στις ελεγμένες εργασίες του μήνα ολοκλήρωσε το '+pct+'% των ασκήσεων ('+hw.done+'/'+hw.total+').';
+ if(hw.ratio>=.85)result+=' Παρουσιάζει πολύ καλή συνέπεια στις εργασίες.';
+ else if(hw.ratio>=.6)result+=' Η συνέπεια στις εργασίες είναι ικανοποιητική, με περιθώρια βελτίωσης.';
+ else result+=' Χρειάζεται μεγαλύτερη συνέπεια στην ολοκλήρωση των εργασιών.';
+ }
  if(row.absent>=2)result+=' Καταγράφηκαν '+row.absent+' απουσίες τον μήνα αυτό.';
  return result;
 }
@@ -470,7 +477,7 @@ $('meLoad').onclick=async()=>{
  const button=$('meLoad');button.disabled=true;$('meInfo').textContent='Φόρτωση…';
  try{
  const prevMonth=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-2,1).toLocaleDateString('sv-SE').slice(0,7);const prevStart=prevMonth+'-01';const start=month+'-01',end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).toLocaleDateString('sv-SE');
- const [gr,mem,students,grades,lessons,attendance,existing,subjects,previousComments]=await Promise.all([
+ const [gr,mem,students,grades,lessons,attendance,existing,subjects,previousComments,homeworkAssignments]=await Promise.all([
  client.from('teaching_groups').select('id,name,subject_id').eq('id',groupId).eq('user_id',user.id).single(),
  client.from('group_students').select('student_id').eq('group_id',groupId).eq('user_id',user.id),
  client.from('students').select('id,full_name,school_grade').eq('user_id',user.id),
@@ -479,21 +486,40 @@ $('meLoad').onclick=async()=>{
  client.from('attendance').select('student_id,lesson_id,status').eq('user_id',user.id),
  client.from('monthly_student_comments').select('student_id,comment').eq('user_id',user.id).eq('group_id',groupId).eq('month',month+'-01'),
  client.from('subjects').select('id,name').eq('user_id',user.id),
- client.from('monthly_student_comments').select('student_id,comment').eq('user_id',user.id).eq('group_id',groupId).eq('month',prevStart)
+ client.from('monthly_student_comments').select('student_id,comment').eq('user_id',user.id).eq('group_id',groupId).eq('month',prevStart),
+ client.from('homework_assignments').select('id,due_date').eq('user_id',user.id).eq('group_id',groupId).gte('due_date',start).lte('due_date',end)
  ]);
- for(const r of [gr,mem,students,grades,lessons,attendance,existing,subjects,previousComments])if(r.error)throw r.error;
+ for(const r of [gr,mem,students,grades,lessons,attendance,existing,subjects,previousComments,homeworkAssignments])if(r.error)throw r.error;
+ const hwIds=(homeworkAssignments.data||[]).map(x=>x.id);
+ let hwSubmissions=[];
+ if(hwIds.length){const hwResult=await client.from('homework_submissions').select('student_id,assignment_id,completed,completed_count,total_count').eq('user_id',user.id).in('assignment_id',hwIds);if(hwResult.error)throw hwResult.error;hwSubmissions=hwResult.data||[];}
+ const hwStats=new Map();
+ for(const sub of hwSubmissions){
+  let done=Number(sub.completed_count),total=Number(sub.total_count);
+  if(sub.completed_count==null||sub.total_count==null||!Number.isFinite(done)||!Number.isFinite(total)||total<=0){done=sub.completed?1:0;total=1;}
+  done=Math.max(0,Math.min(done,total));
+  const st=hwStats.get(sub.student_id)||{done:0,total:0,checked:0,all:0,partial:0,none:0};
+  st.done+=done;st.total+=total;st.checked++;
+  if(done===total)st.all++;else if(done===0)st.none++;else st.partial++;
+  hwStats.set(sub.student_id,st);
+ }
+ for(const st of hwStats.values())st.ratio=st.total?st.done/st.total:0;
  const ids=new Set((mem.data||[]).map(x=>x.student_id)),lessonIds=new Set((lessons.data||[]).map(x=>x.id)),saved=new Map((existing.data||[]).map(x=>[x.student_id,x.comment])),previousSaved=new Map((previousComments.data||[]).map(x=>[x.student_id,x.comment]));
  meGroupName=gr.data.name;meSubjectName=(subjects.data||[]).find(x=>x.id===gr.data.subject_id)?.name||'Πληροφορική';$('meSubject').value='Πληροφορική';const groupStudents=(students.data||[]).filter(x=>ids.has(x.id));const classHints=groupStudents.map(x=>String(x.school_grade||'')).filter(Boolean);const hint=classHints[0]||gr.data.name;const isB=/(^|[^Α-ΩA-Z])(Β|B|2)([^Α-ΩA-Z]|$)|Β.?.?ΛΥΚ|B.?.?LYK/i.test(hint);$('meClass').value=isB?'Β΄ Λυκείου':'Γ΄ Λυκείου';
- meRows=(students.data||[]).filter(x=>ids.has(x.id)).sort((a,b)=>a.full_name.localeCompare(b.full_name,'el')).map(st=>({id:st.id,name:st.full_name,grades:(grades.data||[]).filter(g=>g.student_id===st.id&&g.exam_date>=start&&(!gr.data.subject_id||g.subject_id===gr.data.subject_id)&&Number.isFinite(Number(g.grade))).map(g=>Number(g.grade)),previousGrades:(grades.data||[]).filter(g=>g.student_id===st.id&&g.exam_date<start&&(!gr.data.subject_id||g.subject_id===gr.data.subject_id)&&Number.isFinite(Number(g.grade))).map(g=>Number(g.grade)),previousComment:previousSaved.get(st.id)||'',absent:(attendance.data||[]).filter(a=>a.student_id===st.id&&lessonIds.has(a.lesson_id)&&a.status==='absent').length,comment:saved.get(st.id)||''}));
+ meRows=(students.data||[]).filter(x=>ids.has(x.id)).sort((a,b)=>a.full_name.localeCompare(b.full_name,'el')).map(st=>({id:st.id,name:st.full_name,grades:(grades.data||[]).filter(g=>g.student_id===st.id&&g.exam_date>=start&&(!gr.data.subject_id||g.subject_id===gr.data.subject_id)&&Number.isFinite(Number(g.grade))).map(g=>Number(g.grade)),previousGrades:(grades.data||[]).filter(g=>g.student_id===st.id&&g.exam_date<start&&(!gr.data.subject_id||g.subject_id===gr.data.subject_id)&&Number.isFinite(Number(g.grade))).map(g=>Number(g.grade)),previousComment:previousSaved.get(st.id)||'',homework:hwStats.get(st.id)||null,absent:(attendance.data||[]).filter(a=>a.student_id===st.id&&lessonIds.has(a.lesson_id)&&a.status==='absent').length,comment:saved.get(st.id)||''}));
  const root=$('meStudents');root.replaceChildren();
  for(const row of meRows){const box=document.createElement('div');box.className='card';box.style.margin='12px 0';const h=document.createElement('h3');h.textContent=row.name;box.append(h);const meta=document.createElement('p');meta.className='muted';meta.textContent='Βαθμοί μήνα: '+(row.grades.join(', ')||'Δεν υπάρχουν')+' | Απουσίες: '+row.absent;box.append(meta);
+ const hw=document.createElement('p');hw.className='muted';
+ if(row.homework){const h=row.homework;hw.textContent='Εργασίες (ελεγμένες): '+h.done+'/'+h.total+' ασκήσεις ('+Math.round(h.ratio*100)+'%) · Όλες: '+h.all+' · Μερικές: '+h.partial+' · Καμία: '+h.none;}
+ else hw.textContent='Εργασίες: Δεν υπάρχουν ελεγμένες παραδόσεις για τον μήνα.';
+ box.append(hw);
  const history=document.createElement('details');history.style.margin='8px 0';
  const hs=document.createElement('summary');hs.textContent='Ιστορικό προηγούμενου μήνα ('+prevMonth+')';history.append(hs);
  const hp=document.createElement('p');hp.className='muted';hp.textContent='Προηγούμενοι βαθμοί: '+(row.previousGrades.join(', ')||'Δεν υπάρχουν');history.append(hp);
  const hc=document.createElement('p');hc.textContent='Προηγούμενο σχόλιο: '+(row.previousComment||'Δεν υπάρχει αποθηκευμένο σχόλιο.');history.append(hc);
  if(row.previousGrades.length&&row.grades.length){const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;const d=avg(row.grades)-avg(row.previousGrades);const diff=document.createElement('p');diff.textContent='Μεταβολή μέσου όρου: '+(d>0?'+':'')+d.toFixed(1)+' μονάδες';history.append(diff)}
  box.append(history);const b=document.createElement('button');b.type='button';b.className='secondary';b.textContent='Πρόταση σχολίου';const t=document.createElement('textarea');t.rows=3;t.style.width='100%';t.value=row.comment;t.placeholder='Σχόλιο καθηγητή…';t.addEventListener('input',()=>{row.comment=t.value;$('meProgressStatus').textContent='Ολοκληρωμένες αξιολογήσεις: '+meRows.filter(r=>r.comment.trim()).length+'/'+meRows.length+' · Εκκρεμείς: '+meRows.filter(r=>!r.comment.trim()).length});b.onclick=()=>{if(t.value.trim()&&!confirm('Να αντικατασταθεί το υπάρχον σχόλιο;'))return;t.value=meSuggest(row);row.comment=t.value;$('meProgressStatus').textContent='Ολοκληρωμένες αξιολογήσεις: '+meRows.filter(r=>r.comment.trim()).length+'/'+meRows.length};box.append(b,t);root.append(box)}
- $('meProgressStatus').textContent='Ολοκληρωμένες αξιολογήσεις: '+meRows.filter(r=>r.comment.trim()).length+'/'+meRows.length+' · Εκκρεμείς: '+meRows.filter(r=>!r.comment.trim()).length+' · Σύγκριση με '+prevMonth; $('meInfo').textContent='Μαθητές: '+meRows.length+' · Αποθηκευμένα σχόλια: '+saved.size+' · Οι προτάσεις βασίζονται μόνο σε βαθμούς και απουσίες. Έλεγξέ τες πριν τις δώσεις στους γονείς.';for(const id of ['meSave','mePrint','meSuggestAll'])$(id).disabled=!meRows.length;
+ $('meProgressStatus').textContent='Ολοκληρωμένες αξιολογήσεις: '+meRows.filter(r=>r.comment.trim()).length+'/'+meRows.length+' · Εκκρεμείς: '+meRows.filter(r=>!r.comment.trim()).length+' · Σύγκριση με '+prevMonth; $('meInfo').textContent='Μαθητές: '+meRows.length+' · Αποθηκευμένα σχόλια: '+saved.size+' · Οι προτάσεις βασίζονται σε βαθμούς, απουσίες και ελεγμένες εργασίες με ημερομηνία παράδοσης στον μήνα. Οι μη ελεγμένες εργασίες δεν μετρούν. Έλεγξέ τες πριν τις δώσεις στους γονείς.';for(const id of ['meSave','mePrint','meSuggestAll'])$(id).disabled=!meRows.length;
  }catch(e){$('meInfo').textContent='Σφάλμα: '+e.message;setStatus('Σφάλμα αξιολογήσεων: '+e.message,true)}finally{button.disabled=false}
 };
 $('meSuggestAll').onclick=()=>{if(meRows.some(r=>r.comment.trim())&&!confirm('Να αντικατασταθούν και τα υπάρχοντα σχόλια;'))return;for(const r of meRows)r.comment=meSuggest(r);$('meStudents').querySelectorAll('textarea').forEach((t,i)=>t.value=meRows[i].comment);$('meProgressStatus').textContent='Ολοκληρωμένες αξιολογήσεις: '+meRows.filter(r=>r.comment.trim()).length+'/'+meRows.length};
