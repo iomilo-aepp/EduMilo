@@ -353,8 +353,7 @@ $('progressGenerate').onclick=async()=>{
 $('progressPrint').onclick=()=>{
  const root=$('progressReportBody');if(!root.textContent.trim())return;
  const win=window.open('','_blank');if(!win){alert('Επίτρεψε τα αναδυόμενα παράθυρα για εκτύπωση.');return}
- win.document.open();win.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>EduMilo - Αναφορά προόδου</title><style>@page{size:A4;margin:15mm}body{font:12px Arial,sans-serif;color:#17233b}h1{font-size:22px}h2{font-size:19px}h3{font-size:15px;margin-top:22px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border:1px solid #bbc6d5;padding:7px;text-align:left}tr{break-inside:avoid}p{line-height:1.5}h2,h3{break-after:avoid}</style></head><body><h1>EduMilo — Αναφορά προόδου μαθητή</h1><div id="report"></div>
-</body></html>');win.document.close();
+ win.document.open();win.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>EduMilo - Αναφορά προόδου</title><style>@page{size:A4;margin:15mm}body{font:12px Arial,sans-serif;color:#17233b}h1{font-size:22px}h2{font-size:19px}h3{font-size:15px;margin-top:22px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border:1px solid #bbc6d5;padding:7px;text-align:left}tr{break-inside:avoid}p{line-height:1.5}h2,h3{break-after:avoid}</style></head><body><h1>EduMilo — Αναφορά προόδου μαθητή</h1><div id="report"></div></body></html>');win.document.close();
  const printCopy=win.document.importNode(root,true);
  printCopy.querySelectorAll('.progress-chart-tools').forEach(x=>x.remove());
  // Μόνο στην εκτύπωση: αφαίρεση ενότητας εργασιών και τελικής σημείωσης.
