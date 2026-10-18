@@ -325,7 +325,46 @@ async function loadHomework(){
   const edit=document.createElement('button');edit.type='button';edit.className='secondary smallbtn';edit.textContent='Επεξεργασία';edit.onclick=async()=>{const name=prompt('Εργασία:',h.title);if(name===null)return;const date=prompt('Ημερομηνία παράδοσης (ΕΕΕΕ-ΜΜ-ΗΗ):',h.due_date);if(date===null)return;if(!name.trim()||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date)))return setStatus('Μη έγκυρη εργασία ή ημερομηνία.',true);const {error}=await client.from('homework_assignments').update({title:name.trim(),due_date:date}).eq('id',h.id).eq('user_id',user.id);if(error)return setStatus(error.message,true);await loadHomework();setStatus('Η εργασία ενημερώθηκε.')};actions.append(edit);
   const del=document.createElement('button');del.type='button';del.className='danger smallbtn';del.textContent='Διαγραφή';del.onclick=async()=>{if(!confirm('Να διαγραφεί η εργασία και οι παραδόσεις της;'))return;const {error}=await client.from('homework_assignments').delete().eq('id',h.id).eq('user_id',user.id);if(error)return setStatus(error.message,true);await loadHomework();setStatus('Η εργασία διαγράφηκε.')};actions.append(del);card.append(actions);
   const details=document.createElement('div');details.className='hidden';card.append(details);
-  toggle.onclick=async()=>{if(!details.classList.contains('hidden')){details.classList.add('hidden');return}details.replaceChildren();details.textContent='Φόρτωση…';details.classList.remove('hidden');const {data,error}=await client.from('homework_submissions').select('student_id,completed').eq('assignment_id',h.id).eq('user_id',user.id);if(error){details.textContent=error.message;return}details.replaceChildren();const existing=new Map(data.map(x=>[x.student_id,x.completed]));const members=mm.data.filter(m=>m.group_id===h.group_id);if(!members.length){details.textContent='Δεν υπάρχουν μαθητές στο τμήμα.';return}for(const m of members){const st=ss.data.find(x=>x.id===m.student_id);if(!st)continue;const label=document.createElement('label');label.style.display='block';label.style.margin='10px 0';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.style.width='auto';checkbox.style.marginRight='10px';checkbox.checked=existing.get(st.id)===true;label.append(checkbox,document.createTextNode(st.full_name));details.append(label);checkbox.onchange=async()=>{checkbox.disabled=true;const {error}=await client.from('homework_submissions').upsert({user_id:user.id,assignment_id:h.id,student_id:st.id,completed:checkbox.checked},{onConflict:'assignment_id,student_id'});checkbox.disabled=false;if(error){checkbox.checked=!checkbox.checked;setStatus('Δεν αποθηκεύτηκε: '+error.message,true)}else setStatus('Η παράδοση ενημερώθηκε.')};}};
+  toggle.onclick=async()=>{
+   if(!details.classList.contains('hidden')){details.classList.add('hidden');return}
+   details.replaceChildren();details.textContent='Φόρτωση…';details.classList.remove('hidden');
+   const {data,error}=await client.from('homework_submissions').select('student_id,completed,completed_count,total_count').eq('assignment_id',h.id).eq('user_id',user.id);
+   if(error){details.textContent='Σφάλμα φόρτωσης: '+error.message;return}
+   details.replaceChildren();const existing=new Map(data.map(x=>[x.student_id,x]));
+   const members=mm.data.filter(m=>m.group_id===h.group_id);
+   if(!members.length){details.textContent='Δεν υπάρχουν μαθητές στο τμήμα.';return}
+   const hint=document.createElement('p');hint.className='muted';hint.textContent='Για κάθε μαθητή δήλωσε πόσες ασκήσεις έγιναν από το σύνολο. Οι παλιές ολοκληρωμένες εργασίες διατηρούνται ως «Όλες».';details.append(hint);
+   for(const m of members){
+    const st=ss.data.find(x=>x.id===m.student_id);if(!st)continue;
+    const old=existing.get(st.id);const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid #e4e9f0';
+    const name=document.createElement('strong');name.textContent=st.full_name;name.style.minWidth='145px';row.append(name);
+    const select=document.createElement('select');select.style.cssText='width:auto;min-width:130px';
+    [['','Δεν ελέγχθηκε'],['all','Όλες'],['partial','Μερικές'],['none','Καμία']].forEach(([v,t])=>option(select,v,t));
+    const total=document.createElement('input');total.type='number';total.min='1';total.step='1';total.placeholder='Σύνολο';total.title='Συνολικές ασκήσεις';total.style.cssText='width:85px';
+    const done=document.createElement('input');done.type='number';done.min='0';done.step='1';done.placeholder='Έκανε';done.title='Πόσες ασκήσεις έκανε';done.style.cssText='width:85px';
+    const initialTotal=old?.total_count??null,initialDone=old?.completed_count??null;
+    if(initialTotal!==null)total.value=initialTotal;if(initialDone!==null)done.value=initialDone;
+    select.value=old?(old.completed?'all':(initialDone!==null&&initialDone>0?'partial':'none')):'';
+    const save=document.createElement('button');save.type='button';save.className='secondary smallbtn';save.textContent='Αποθήκευση';
+    const feedback=document.createElement('span');feedback.className='muted';
+    select.onchange=()=>{if(select.value==='none')done.value='0';if(select.value==='all'&&total.value)done.value=total.value;if(select.value==='partial'&&total.value&&(!done.value||Number(done.value)>=Number(total.value)))done.value=Math.max(1,Number(total.value)-1)};
+    total.onchange=()=>{if(select.value==='all')done.value=total.value};
+    save.onclick=async()=>{
+     const state=select.value, t=total.value===''?null:Number(total.value),d=done.value===''?null:Number(done.value);
+     if(!state){feedback.textContent='Επίλεξε κατάσταση.';return}
+     if(t!==null&&(!Number.isInteger(t)||t<1)){feedback.textContent='Το σύνολο πρέπει να είναι θετικός ακέραιος.';return}
+     if(d!==null&&(!Number.isInteger(d)||d<0)){feedback.textContent='Μη έγκυρος αριθμός.';return}
+     if(state==='partial'&&(t===null||d===null||d<=0||d>=t)){feedback.textContent='Για «Μερικές» βάλε π.χ. 3 από 5.';return}
+     if(state==='all'&&t!==null&&d!==null&&d!==t){feedback.textContent='Για «Όλες» οι αριθμοί πρέπει να είναι ίσοι.';return}
+     if(state==='none'&&d!==null&&d!==0){feedback.textContent='Για «Καμία» ο αριθμός πρέπει να είναι 0.';return}
+     const completed=state==='all';const payload={user_id:user.id,assignment_id:h.id,student_id:st.id,completed,completed_count:state==='none'?0:state==='all'?t:d,total_count:t};
+     save.disabled=true;feedback.textContent='Αποθήκευση…';
+     const {error}=await client.from('homework_submissions').upsert(payload,{onConflict:'assignment_id,student_id'});
+     save.disabled=false;feedback.textContent=error?'Σφάλμα: '+error.message:'✓ Αποθηκεύτηκε';if(!error)setStatus('Η εργασία του μαθητή ενημερώθηκε.');
+    };
+    row.append(select,document.createTextNode('Έκανε:'),done,document.createTextNode('Από:'),total,save,feedback);details.append(row);
+   }
+  };
   root.append(card);
  }
 }
@@ -529,12 +568,12 @@ async function openStudentProfile(studentId){
    if(groupIds.length){
     const [assignments,submissions]=await Promise.all([
      yearFilter(client.from('homework_assignments').select('id,title,due_date,group_id').eq('user_id',user.id).in('group_id',groupIds)),
-     client.from('homework_submissions').select('assignment_id,completed').eq('user_id',user.id).eq('student_id',studentId)
+     client.from('homework_submissions').select('assignment_id,completed,completed_count,total_count').eq('user_id',user.id).eq('student_id',studentId)
     ]);
     if(assignments.error||submissions.error)throw Error(assignments.error?.message||submissions.error?.message);
-    const done=new Set(submissions.data.filter(x=>x.completed).map(x=>x.assignment_id));const count=assignments.data.filter(x=>done.has(x.id)).length;
+    const submissionMap=new Map(submissions.data.map(x=>[x.assignment_id,x]));const done=new Set(submissions.data.filter(x=>x.completed).map(x=>x.assignment_id));const count=assignments.data.filter(x=>done.has(x.id)).length;
     const summary=document.createElement('p');summary.textContent='Ολοκληρωμένες: '+count+' | Εκκρεμείς: '+(assignments.data.length-count);root.append(summary);
-    if(assignments.data.length)profileTable(root,['Εργασία','Παράδοση','Κατάσταση'],assignments.data.map(x=>[x.title,x.due_date,done.has(x.id)?'Ολοκληρώθηκε':'Εκκρεμεί']));
+    if(assignments.data.length)profileTable(root,['Εργασία','Παράδοση','Κατάσταση'],assignments.data.map(x=>[x.title,x.due_date,(()=>{const r=submissionMap.get(x.id);if(!r)return 'Δεν ελέγχθηκε';if(r.completed)return r.total_count?'Όλες ('+r.total_count+'/'+r.total_count+')':'Όλες';if(r.completed_count>0)return 'Μερικές ('+r.completed_count+'/'+r.total_count+')';return 'Καμία'+(r.total_count?' (0/'+r.total_count+')':'')})()]));
    }else{const p=document.createElement('p');p.textContent='Δεν υπάρχουν εργασίες.';root.append(p)}
   }catch(err){const p=document.createElement('p');p.textContent='Οι εργασίες δεν φορτώθηκαν: '+err.message;root.append(p)}
   const foot=document.createElement('p');foot.style.marginTop='18px';foot.style.fontSize='12px';foot.textContent='Η αναφορά περιλαμβάνει μόνο τις καταχωρισμένες παρουσίες και βαθμολογίες του επιλεγμένου σχολικού έτους. Τα μαθήματα χωρίς καταχώριση παρουσίας δεν υπολογίζονται ως απουσίες.';root.append(foot);
