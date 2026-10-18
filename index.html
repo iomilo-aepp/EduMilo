@@ -38,11 +38,38 @@
 @media(max-width:700px){#quizResults .qr-dashboard{grid-template-columns:repeat(2,minmax(0,1fr))}#quizResults .qr-stat{padding:11px}#quizResults .qr-stat strong{font-size:1.25rem}}
 @media print{#quizResults .qr-toolbar,#quizRefresh,#quizExportResults{display:none!important}#quizResults .qr-table-wrap{overflow:visible}#quizResults .qr-table{min-width:0;font-size:11px}}
 </style>
+
+<style>
+/* EduMilo responsive navigation */
+#app > nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:16px 0 22px;padding:14px;background:#fff;border:1px solid #e0e7f2;border-radius:16px;box-shadow:0 4px 18px #15213a0a}
+#app > nav button{min-width:0;min-height:46px;width:100%;padding:10px 8px;border-radius:10px;background:#eef3fc;color:#243d67;border:1px solid #dce5f4;font-weight:600;font-size:13px;line-height:1.25;white-space:normal;transition:background .15s}
+#app > nav button:hover{background:#dce8fb}
+#app > nav button.active{background:#193d86;color:#fff;border-color:#193d86;box-shadow:0 2px 7px #193d8629}
+#mobileMenuToggle{display:none}
+@media(max-width:800px){
+ #app > nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:10px}
+ #app > nav button{font-size:12px;padding:9px 5px}
+}
+@media(max-width:600px){
+ main{padding:0 12px;margin:14px auto}
+ #app > h1{font-size:21px;margin:12px 0}
+ #mobileMenuToggle{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:52px;padding:12px 15px;margin:12px 0 8px;background:#193d86;color:white;border-radius:12px;font-weight:700;text-align:left}
+ #mobileMenuToggle .menu-chevron{transition:transform .2s}
+ #mobileMenuToggle[aria-expanded="true"] .menu-chevron{transform:rotate(180deg)}
+ #app > nav{display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px;margin:0 0 15px;box-shadow:none}
+ #app > nav.menu-open{display:grid}
+ #app > nav button{min-height:48px;font-size:13px;padding:10px 6px}
+ #app > nav button.active{grid-column:auto}
+ header{gap:8px;flex-wrap:wrap}
+ header strong{font-size:18px}
+}
+@media print{#mobileMenuToggle,#app > nav{display:none!important}}
+</style>
 </head><body><header><strong><img src="./edumilo-192.png" alt=""> EduMilo</strong><button id="logout" class="secondary hidden">Αποσύνδεση</button></header><main><div id="status" role="status"></div>
 <section id="config" class="card"><h1>Αρχική σύνδεση Supabase</h1><p class="muted">Συμπλήρωσε το Project URL και το δημόσιο Publishable Key από το δικό σου Supabase project EduMilo. Μη βάλεις secret ή service_role key.</p><form id="configForm"><label>Project URL<input id="url" type="url" placeholder="https://xxxxx.supabase.co" required></label><label>Publishable key<input id="key" placeholder="sb_publishable_..." required></label><button>Αποθήκευση και σύνδεση</button></form></section>
 <section id="auth" class="card hidden"><h1>Σύνδεση</h1><p class="muted">Χρησιμοποίησε τον λογαριασμό που δημιούργησες στο Supabase Authentication.</p><form id="loginForm"><label>Email<input id="email" type="email" required autocomplete="username"></label><label>Κωδικός<input id="password" type="password" required autocomplete="current-password"></label><button>Είσοδος</button></form><p><button id="changeConfig" class="secondary">Αλλαγή Supabase project</button></p></section>
 <section id="pin" class="card hidden"><h1 id="pinTitle">Ξεκλείδωμα EduMilo</h1><p id="pinHint" class="muted"></p><form id="pinForm"><label>Τετραψήφιο PIN<input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" required></label><label id="pinConfirmWrap" class="hidden">Επιβεβαίωση PIN<input id="pinConfirm" type="password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off"></label><button id="pinSubmit">Συνέχεια</button></form><p class="pin-actions"><button type="button" id="pinEmail" class="secondary">Είσοδος με email και κωδικό</button></p></section>
-<section id="app" class="hidden"><h1>Πίνακας διαχείρισης</h1><div class="card" id="yearPanel"><label><b>Σχολικό έτος</b><select id="schoolYearSelect" style="width:100%;margin-top:8px"></select></label><form id="yearForm" class="two" style="margin-top:12px"><label>Νέο σχολικό έτος<input id="yearName" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required></label><button>Προσθήκη σχολικού έτους</button></form></div><p id="identity" class="muted"></p><p><button id="changePin" class="secondary">Αλλαγή PIN</button></p><nav><button data-tab="home" class="active">Αρχική</button><button data-tab="students">Μαθητές</button><button data-tab="subjects">Μαθήματα</button><button data-tab="groups">Τμήματα / Ιδιαίτερα</button><button data-tab="sessions">Ημερολόγιο μαθημάτων</button><button data-tab="attendance">Παρουσιολόγιο</button><button data-tab="marks">Βαθμολογίες</button><button data-tab="homework">Εργασίες</button><button data-tab="curriculum">Διδακτέα Ύλη</button><button data-tab="iep">Θέματα ΙΕΠ</button><button data-tab="reminders">Υπενθυμίσεις</button><button data-tab="reports">Αναφορές παρουσιών</button><button data-tab="progressReports">Αναφορές Προόδου</button><button data-tab="monthlyEvaluations">Μηνιαίες Αξιολογήσεις</button><button data-tab="finances">Οικονομικά</button><button data-tab="onlineTests">Online Τεστ</button><button data-tab="backup">Backup / Επαναφορά</button></nav>
+<section id="app" class="hidden"><h1>Πίνακας διαχείρισης</h1><div class="card" id="yearPanel"><label><b>Σχολικό έτος</b><select id="schoolYearSelect" style="width:100%;margin-top:8px"></select></label><form id="yearForm" class="two" style="margin-top:12px"><label>Νέο σχολικό έτος<input id="yearName" placeholder="2026-2027" pattern="[0-9]{4}-[0-9]{4}" required></label><button>Προσθήκη σχολικού έτους</button></form></div><p id="identity" class="muted"></p><p><button id="changePin" class="secondary">Αλλαγή PIN</button></p><button type="button" id="mobileMenuToggle" aria-expanded="false" aria-controls="edumiloMainNav"><span>☰ Μενού · <span id="mobileMenuCurrent">Αρχική</span></span><span class="menu-chevron">⌄</span></button><nav id="edumiloMainNav"><button data-tab="home" class="active">Αρχική</button><button data-tab="students">Μαθητές</button><button data-tab="subjects">Μαθήματα</button><button data-tab="groups">Τμήματα / Ιδιαίτερα</button><button data-tab="sessions">Ημερολόγιο μαθημάτων</button><button data-tab="attendance">Παρουσιολόγιο</button><button data-tab="marks">Βαθμολογίες</button><button data-tab="homework">Εργασίες</button><button data-tab="curriculum">Διδακτέα Ύλη</button><button data-tab="iep">Θέματα ΙΕΠ</button><button data-tab="reminders">Υπενθυμίσεις</button><button data-tab="reports">Αναφορές παρουσιών</button><button data-tab="progressReports">Αναφορές Προόδου</button><button data-tab="monthlyEvaluations">Μηνιαίες Αξιολογήσεις</button><button data-tab="finances">Οικονομικά</button><button data-tab="onlineTests">Online Τεστ</button><button data-tab="backup">Backup / Επαναφορά</button></nav>
 <div id="home" class="tab card"><h2>Αρχική — Πίνακας ελέγχου</h2><p class="muted" id="dashboardDate"></p><div class="stats"><div class="stat">Μαθητές<b id="studentCount">0</b></div><div class="stat">Μαθήματα / Αντικείμενα<b id="subjectCount">0</b></div><div class="stat">Μαθήματα σήμερα<b id="dashboardTodayCount">—</b></div><div class="stat">Εκκρεμείς εργασίες<b id="dashboardHomeworkCount">—</b></div><div class="stat">Εισπράξεις μήνα<b id="dashboardPaid">—</b></div><div class="stat">Χρεώσεις μήνα<b id="dashboardCharges">—</b></div><div class="stat">Τμήματα / Ιδιαίτερα<b id="groupCount">0</b></div></div><h3>Γρήγορες ενέργειες</h3><div class="group-actions"><button type="button" data-dashboard-go="sessions">Μαθήματα</button><button type="button" data-dashboard-go="finances">Νέα πληρωμή</button><button type="button" data-dashboard-go="reminders">Νέα υπενθύμιση</button></div><h3>Σημερινά μαθήματα</h3><div id="dashboardLessons" class="group-card">Φόρτωση…</div><h3>Εκκρεμείς υπενθυμίσεις</h3><div id="dashboardReminders" class="group-card">Φόρτωση…</div><h3>Εργασίες με προθεσμία τις επόμενες 7 ημέρες</h3><div id="dashboardHomework" class="group-card">Φόρτωση…</div><p><button type="button" id="dashboardRefresh" class="secondary">Ανανέωση αρχικής</button></p><p id="dashboardError" class="error" role="status"></p></div>
 <div id="students" class="tab card hidden"><h2>Νέος μαθητής</h2><form id="studentForm" class="two"><label>Ονοματεπώνυμο<input name="full_name" required maxlength="150"></label><label>Τάξη<input name="school_grade" placeholder="π.χ. Γ' Λυκείου" maxlength="60"></label><label>Τηλέφωνο<input name="phone" maxlength="40"></label><button>Προσθήκη μαθητή</button></form><h2>Μαθητές</h2><div class="scroll"><table><thead><tr><th>Ονοματεπώνυμο</th><th>Τάξη</th><th>Τηλέφωνο</th><th></th></tr></thead><tbody id="studentRows"></tbody></table></div></div>
 <div id="homework" class="tab card hidden"><h2>Εργασίες για το σπίτι</h2><form id="homeworkForm" class="two"><label>Τμήμα<select id="homeworkGroup" required></select></label><label>Εργασία / Ασκήσεις<input id="homeworkTitle" maxlength="250" required placeholder="π.χ. Ασκήσεις 1–5, σελ. 30"></label><label>Ημερομηνία παράδοσης<input id="homeworkDue" type="date" required></label><button type="submit">Προσθήκη εργασίας</button></form><h2>Εργασίες τμημάτων</h2><p class="muted">Πάτησε «Παραδόσεις» για να σημειώσεις ποιοι μαθητές ολοκλήρωσαν την εργασία. Κενό σημαίνει ότι εκκρεμεί.</p><div id="homeworkList"></div></div>
@@ -326,7 +353,23 @@ $('progressGenerate').onclick=async()=>{
 $('progressPrint').onclick=()=>{
  const root=$('progressReportBody');if(!root.textContent.trim())return;
  const win=window.open('','_blank');if(!win){alert('Επίτρεψε τα αναδυόμενα παράθυρα για εκτύπωση.');return}
- win.document.open();win.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>EduMilo - Αναφορά προόδου</title><style>@page{size:A4;margin:15mm}body{font:12px Arial,sans-serif;color:#17233b}h1{font-size:22px}h2{font-size:19px}h3{font-size:15px;margin-top:22px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border:1px solid #bbc6d5;padding:7px;text-align:left}tr{break-inside:avoid}p{line-height:1.5}h2,h3{break-after:avoid}</style></head><body><h1>EduMilo — Αναφορά προόδου μαθητή</h1><div id="report"></div></body></html>');win.document.close();
+ win.document.open();win.document.write('<!doctype html><html lang="el"><head><meta charset="utf-8"><title>EduMilo - Αναφορά προόδου</title><style>@page{size:A4;margin:15mm}body{font:12px Arial,sans-serif;color:#17233b}h1{font-size:22px}h2{font-size:19px}h3{font-size:15px;margin-top:22px}table{width:100%;border-collapse:collapse;font-size:11px}td,th{border:1px solid #bbc6d5;padding:7px;text-align:left}tr{break-inside:avoid}p{line-height:1.5}h2,h3{break-after:avoid}</style></head><body><h1>EduMilo — Αναφορά προόδου μαθητή</h1><div id="report"></div>
+<script>
+(function(){
+ const toggle=document.getElementById('mobileMenuToggle');
+ const nav=document.getElementById('edumiloMainNav');
+ const current=document.getElementById('mobileMenuCurrent');
+ if(!toggle||!nav)return;
+ function close(){nav.classList.remove('menu-open');toggle.setAttribute('aria-expanded','false')}
+ toggle.addEventListener('click',()=>{const open=nav.classList.toggle('menu-open');toggle.setAttribute('aria-expanded',String(open))});
+ nav.querySelectorAll('button[data-tab]').forEach(btn=>btn.addEventListener('click',()=>{
+  current.textContent=btn.textContent.trim();
+  close();
+ }));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+})();
+</script>
+</body></html>');win.document.close();
  const printCopy=win.document.importNode(root,true);
  printCopy.querySelectorAll('.progress-chart-tools').forEach(x=>x.remove());
  // Μόνο στην εκτύπωση: αφαίρεση ενότητας εργασιών και τελικής σημείωσης.
