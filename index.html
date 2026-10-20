@@ -167,22 +167,48 @@ async function loadDashboard(){
    ['groups',yearFilter(client.from('teaching_groups').select('id,name,hourly_rate').eq('user_id',user.id))],
    ['lessons',yearFilter(client.from('lessons').select('id,group_id,lesson_date,start_time,end_time,lesson_status').eq('user_id',user.id)).gte('lesson_date',first).lte('lesson_date',last)],
    ['payments',client.from('payments').select('amount,group_id').eq('user_id',user.id).gte('payment_date',first).lte('payment_date',last)],
-   ['homework',yearFilter(client.from('homework_assignments').select('title,due_date,group_id').eq('user_id',user.id)).gte('due_date',today).lte('due_date',soon)],
+   ['homework',yearFilter(client.from('homework_assignments').select('id,title,due_date,group_id').eq('user_id',user.id)).gte('due_date',today).lte('due_date',soon)],
    ['reminders',yearFilter(client.from('personal_reminders').select('title,due_date,is_done').eq('user_id',user.id)).eq('is_done',false).order('due_date',{ascending:true}).limit(8)]
   ];
   const results=await Promise.all(jobs.map(async ([name,query])=>({name,...await query})));
   const data={};for(const r of results){if(r.error)throw Error(r.name+': '+r.error.message);data[r.name]=r.data||[]}
+   // A homework assignment leaves the dashboard only when every enrolled student has a recorded submission.
+   const groupIds=[...new Set(data.homework.map(h=>h.group_id))];
+   let pendingHomework=data.homework;
+   if(groupIds.length&&data.homework.length){
+    const [membersRes,submissionsRes]=await Promise.all([
+     client.from('group_students').select('group_id,student_id').eq('user_id',user.id).in('group_id',groupIds),
+     client.from('homework_submissions').select('assignment_id,student_id').eq('user_id',user.id).in('assignment_id',data.homework.map(h=>h.id))
+    ]);
+    if(membersRes.error)throw Error('Μαθητές τμημάτων: '+membersRes.error.message);
+    if(submissionsRes.error)throw Error('Παραδόσεις εργασιών: '+submissionsRes.error.message);
+    const membersByGroup=new Map(),checkedByAssignment=new Map();
+    for(const m of membersRes.data||[]){
+     if(!membersByGroup.has(m.group_id))membersByGroup.set(m.group_id,new Set());
+     membersByGroup.get(m.group_id).add(m.student_id);
+    }
+    for(const sub of submissionsRes.data||[]){
+     if(!checkedByAssignment.has(sub.assignment_id))checkedByAssignment.set(sub.assignment_id,new Set());
+     checkedByAssignment.get(sub.assignment_id).add(sub.student_id);
+    }
+    pendingHomework=data.homework.filter(h=>{
+     const members=membersByGroup.get(h.group_id);
+     if(!members||members.size===0)return true;
+     const checked=checkedByAssignment.get(h.id)||new Set();
+     return [...members].some(id=>!checked.has(id));
+    });
+   }
   const names=new Map(data.groups.map(g=>[g.id,g.name]));
-  const todayLessons=data.lessons.filter(l=>l.lesson_date===today).sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''));
+  const todayLessons=data.lessons.filter(l=>l.lesson_date===today && !['completed','canceled'].includes(l.lesson_status)).sort((a,b)=>(a.start_time||'').localeCompare(b.start_time||''));
   $('dashboardTodayCount').textContent=todayLessons.length;
-  $('dashboardHomeworkCount').textContent=data.homework.length;
+  $('dashboardHomeworkCount').textContent=pendingHomework.length;
   const paid=data.payments.reduce((sum,p)=>sum+Number(p.amount||0),0);
   const rates=new Map(data.groups.map(g=>[g.id,Number(g.hourly_rate||0)]));
   const charges=data.lessons.filter(l=>l.lesson_status==='completed').reduce((sum,l)=>sum+financeDuration(l)*(rates.get(l.group_id)||0),0);
   $('dashboardPaid').textContent=eur(paid);$('dashboardCharges').textContent=eur(charges);
   put('dashboardLessons',todayLessons.map(l=>`${(l.start_time||'').slice(0,5)}–${(l.end_time||'').slice(0,5)} · ${names.get(l.group_id)||'Τμήμα'} · ${l.lesson_status==='canceled'?'Ακυρώθηκε':l.lesson_status==='completed'?'Πραγματοποιήθηκε':'Προγραμματισμένο'}`),'Δεν υπάρχουν μαθήματα σήμερα.');
   put('dashboardReminders',data.reminders.map(r=>`${r.due_date} · ${r.title}`),'Δεν υπάρχουν εκκρεμείς υπενθυμίσεις.');
-  put('dashboardHomework',data.homework.map(h=>`${h.due_date} · ${names.get(h.group_id)||'Τμήμα'} · ${h.title}`),'Δεν υπάρχουν εργασίες με προθεσμία τις επόμενες 7 ημέρες.');
+  put('dashboardHomework',pendingHomework.map(h=>`${h.due_date} · ${names.get(h.group_id)||'Τμήμα'} · ${h.title}`),'Δεν υπάρχουν εργασίες με προθεσμία τις επόμενες 7 ημέρες.');
  }catch(e){$('dashboardError').textContent='Δεν φορτώθηκαν όλα τα στοιχεία: '+e.message}
  finally{dashboardBusy=false}
 }
@@ -360,7 +386,7 @@ async function loadHomework(){
      const completed=state==='all';const payload={user_id:user.id,assignment_id:h.id,student_id:st.id,completed,completed_count:state==='none'?0:state==='all'?t:d,total_count:t};
      save.disabled=true;feedback.textContent='Αποθήκευση…';
      const {error}=await client.from('homework_submissions').upsert(payload,{onConflict:'assignment_id,student_id'});
-     save.disabled=false;feedback.textContent=error?'Σφάλμα: '+error.message:'✓ Αποθηκεύτηκε';if(!error)setStatus('Η εργασία του μαθητή ενημερώθηκε.');
+     save.disabled=false;feedback.textContent=error?'Σφάλμα: '+error.message:'✓ Αποθηκεύτηκε';if(!error){setStatus('Η εργασία του μαθητή ενημερώθηκε.');loadDashboard();}
     };
     row.append(select,document.createTextNode('Έκανε:'),done,document.createTextNode('Από:'),total,save,feedback);details.append(row);
    }
@@ -1037,7 +1063,7 @@ function appendLessonStatus(tr,lesson){
   if(error){select.value=old;setStatus('Δεν ενημερώθηκε η κατάσταση: '+error.message,true);return}
   lesson.lesson_status=next;
   document.querySelectorAll('select[data-lesson-status="'+lesson.id+'"]').forEach(el=>{if(el!==select)el.value=next});
-  setStatus('Η κατάσταση του μαθήματος αποθηκεύτηκε.');
+  setStatus('Η κατάσταση του μαθήματος αποθηκεύτηκε.');loadDashboard();
  };
  select.dataset.lessonStatus=lesson.id;cell.append(select);
 }
